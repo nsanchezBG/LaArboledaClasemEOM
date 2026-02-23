@@ -77,6 +77,20 @@
         }
         .animate-shake { animation: shake 0.4s ease-in-out; }
 
+        /* Animaciones del Juego (Nuevas) */
+        @keyframes scorePop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.6); }
+            100% { transform: scale(1); }
+        }
+        .score-pop { animation: scorePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: inline-block; }
+
+        @keyframes warningPulse {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.35; }
+        }
+        .animate-warning-pulse { animation: warningPulse 1s ease-in-out infinite; }
+
         @keyframes truckSlide {
             0%, 100% { transform: translateX(-60px); }
             50% { transform: translateX(60px); }
@@ -116,6 +130,9 @@
             dedoarriba: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/dedoarriba.webp?raw=true',
             caja: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/caja.webp?raw=true',
             foco: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/foco.webp?raw=true',
+            fondo: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/fondo.png?raw=true',
+            timer: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/timer.png?raw=true',
+            beep: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/beep.mp3?raw=true',
             prizes: [
                 { id: 'tier1', name: 'Microondas', minBoxes: 15, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/microondas.png?raw=true' },
                 { id: 'tier2', name: 'Lavadora', minBoxes: 25, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/lavadora.png?raw=true' },
@@ -376,23 +393,30 @@
         // --- MOTOR DEL JUEGO (CANVAS) ---
         const GameEngine = ({ onGameOver }) => {
             const canvasRef = useRef(null);
+            const scoreSpanRef = useRef(null);
             const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
             const [score, setScore] = useState(0);
             const [showTimeUp, setShowTimeUp] = useState(false);
             
-            // Precargar logo de Clasem para pintar en el camión
+            // Precargas
             const logoImg = useMemo(() => {
                 const img = new Image();
                 img.src = ASSETS.logoClasem;
                 return img;
             }, []);
             
-            // Precargar imagen de caja
             const boxImg = useMemo(() => {
                 const img = new Image();
                 img.src = ASSETS.caja;
                 return img;
             }, []);
+
+            const beepAudio = useMemo(() => new Audio(ASSETS.beep), []);
+
+            useEffect(() => {
+                // Forzamos la carga del audio
+                beepAudio.load();
+            }, [beepAudio]);
 
             useEffect(() => {
                 const canvas = canvasRef.current;
@@ -413,11 +437,12 @@
                 let boxesCaught = 0;
                 let isFinished = false;
                 
+                // Camión más grande (130x78 en lugar de 100x60)
                 const truck = {
-                    width: 100,
-                    height: 60,
-                    x: canvas.width / 2 - 50,
-                    y: canvas.height - 80,
+                    width: 130,
+                    height: 78,
+                    x: canvas.width / 2 - 65,
+                    y: canvas.height - 100,
                     color: '#0878A4'
                 };
 
@@ -464,17 +489,13 @@
                     // Limpiar canvas
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    // Fondo decorativo de ciudad/paisaje simple
-                    ctx.fillStyle = '#e2e8f0';
-                    ctx.fillRect(0, canvas.height - 30, canvas.width, 30); // Pista
-
-                    // Spawn Cajas (cada 0.7 seg para reducir cantidad en ~20%)
+                    // Spawn Cajas (Cajas más grandes: size 45 en lugar de 35)
                     boxSpawnTimer -= dt;
                     if (boxSpawnTimer <= 0) {
                         boxes.push({
-                            x: Math.random() * (canvas.width - 40),
-                            y: -40,
-                            size: 35,
+                            x: Math.random() * (canvas.width - 50),
+                            y: -50,
+                            size: 45,
                             speed: 150 + Math.random() * 100 // velocidad variable
                         });
                         boxSpawnTimer = 0.7;
@@ -500,7 +521,7 @@
                             setScore(boxesCaught);
                             boxes.splice(i, 1);
 
-                            // Efectos visuales: Inflar y emitir partículas
+                            // Efectos visuales: Inflar camión y emitir partículas
                             truckInflate = 1;
                             for(let p = 0; p < 8; p++) {
                                 particles.push({
@@ -511,6 +532,18 @@
                                     life: 1
                                 });
                             }
+
+                            // Disparar audio (reproducción superpuesta)
+                            beepAudio.currentTime = 0;
+                            beepAudio.play().catch(e => console.log('Audio autoplay prevented'));
+
+                            // Animar el número del score
+                            if (scoreSpanRef.current) {
+                                scoreSpanRef.current.classList.remove('score-pop');
+                                void scoreSpanRef.current.offsetWidth; // Forzar reflow para reiniciar la animación CSS
+                                scoreSpanRef.current.classList.add('score-pop');
+                            }
+                            
                             continue;
                         }
 
@@ -563,28 +596,44 @@
                     canvas.removeEventListener('touchmove', handleMove);
                     canvas.removeEventListener('mousemove', handleMove);
                 };
-            }, [onGameOver]);
+            }, [onGameOver, beepAudio]);
 
             return (
-                <div className="relative w-full h-full bg-blue-50">
-                    <div className="absolute top-6 left-0 right-0 px-6 flex justify-between items-center z-10 pointer-events-none">
-                        <div className="glass-panel px-4 py-2 rounded-2xl flex items-center gap-2 shadow-md">
-                            <span className="text-xl">⏱️</span>
-                            <span className="font-bold text-xl text-slate-700">00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
+                <div className="relative w-full h-full bg-cover bg-center overflow-hidden" style={{backgroundImage: `url(${ASSETS.fondo})`}}>
+                    
+                    {/* Alerta Radial de 5 segundos */}
+                    {timeLeft <= 5 && !showTimeUp && (
+                        <div className="absolute inset-0 bg-[#F9137C] z-20 pointer-events-none animate-warning-pulse"></div>
+                    )}
+
+                    {/* HUD (Encabezado) */}
+                    <div className="absolute top-8 left-0 right-0 px-6 flex justify-between items-center z-30 pointer-events-none">
+                        
+                        {/* Izquierda: Timer */}
+                        <div className="flex items-center gap-2">
+                            <img src={ASSETS.timer} className="h-10 object-contain drop-shadow-md" alt="Timer" />
+                            <span className="font-black text-[2.5rem] text-[#0878A4] drop-shadow-sm leading-none mt-1.5">{timeLeft}</span>
                         </div>
-                        <div className="glass-panel px-4 py-2 rounded-2xl flex items-center gap-2 bg-[#F9137C] text-white border-none shadow-md">
-                            <span className="text-xl">📦</span>
-                            <span className="font-bold text-xl">{score}</span>
+
+                        {/* Centro: Logo (Filtro Magenta) */}
+                        <img src={ASSETS.logoArboleda} className="h-12 object-contain drop-shadow-md" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} alt="Logo" />
+                        
+                        {/* Derecha: Score */}
+                        <div className="flex items-center gap-2">
+                            <img src={ASSETS.caja} className="h-9 object-contain drop-shadow-md" alt="Caja" />
+                            <span ref={scoreSpanRef} className="font-black text-[2.5rem] text-[#F9137C] drop-shadow-sm leading-none mt-1.5">{score}</span>
                         </div>
                     </div>
-                    <canvas ref={canvasRef} className="w-full h-full cursor-none"></canvas>
                     
+                    {/* Game Canvas */}
+                    <canvas ref={canvasRef} className="absolute inset-0 w-full h-full cursor-none z-10"></canvas>
+                    
+                    {/* Overlay: Tiempo Terminado */}
                     {showTimeUp && (
-                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-40 flex items-center justify-center fade-enter">
-                            <div className="bg-white p-8 rounded-[2rem] shadow-2xl bounce-in text-center flex flex-col items-center">
-                                <span className="text-6xl mb-2">⏱️</span>
-                                <h2 className="text-4xl font-black text-[#F9137C]">¡TIEMPO!</h2>
-                            </div>
+                        <div className="absolute inset-0 bg-[#F9137C] z-50 flex items-center justify-center fade-enter">
+                            <h2 className="text-[4.5rem] font-black text-white uppercase tracking-wider bounce-in drop-shadow-xl">
+                                ¡TIEMPO!
+                            </h2>
                         </div>
                     )}
                 </div>
