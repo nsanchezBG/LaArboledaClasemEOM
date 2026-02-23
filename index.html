@@ -115,6 +115,8 @@
             rueda: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/rueda.png?raw=true',
             bodegon: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/bodegon.png?raw=true',
             dedoarriba: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/dedoarriba.webp?raw=true',
+            caja: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/caja.webp?raw=true',
+            foco: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/foco.webp?raw=true',
             prizes: [
                 { id: 'tier1', name: 'Microondas', minBoxes: 15, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/microondas.png?raw=true' },
                 { id: 'tier2', name: 'Lavadora', minBoxes: 25, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/lavadora.png?raw=true' },
@@ -261,16 +263,20 @@
             }
         };
 
-        const drawBoxShape = (ctx, x, y, size) => {
-            ctx.fillStyle = '#d97706'; // Color cartón
-            ctx.fillRect(x, y, size, size);
-            ctx.fillStyle = '#b45309'; // Cinta adhesiva
-            ctx.fillRect(x + size/2 - 2, y, 4, size);
-            ctx.fillRect(x, y + size/2 - 2, size, 4);
-            // Símbolo
-            ctx.fillStyle = '#fef3c7';
-            ctx.font = `${Math.floor(size*0.45)}px sans-serif`;
-            ctx.fillText('📦', x + size*0.1, y + size - size*0.15);
+        const drawBoxShape = (ctx, x, y, size, boxImg) => {
+            if (boxImg && boxImg.complete && boxImg.naturalWidth !== 0) {
+                ctx.drawImage(boxImg, x, y, size, size);
+            } else {
+                ctx.fillStyle = '#d97706'; // Color cartón
+                ctx.fillRect(x, y, size, size);
+                ctx.fillStyle = '#b45309'; // Cinta adhesiva
+                ctx.fillRect(x + size/2 - 2, y, 4, size);
+                ctx.fillRect(x, y + size/2 - 2, size, 4);
+                // Símbolo
+                ctx.fillStyle = '#fef3c7';
+                ctx.font = `${Math.floor(size*0.45)}px sans-serif`;
+                ctx.fillText('📦', x + size*0.1, y + size - size*0.15);
+            }
         };
 
         // --- COMPONENTE MINI-TUTORIAL (SIMULACIÓN DE MOTOR) ---
@@ -281,6 +287,11 @@
                 img.src = ASSETS.logoClasem;
                 return img;
             }, []);
+            const boxImg = useMemo(() => {
+                const img = new Image();
+                img.src = ASSETS.caja;
+                return img;
+            }, []);
 
             useEffect(() => {
                 const canvas = canvasRef.current;
@@ -289,10 +300,15 @@
                 let lastTime = Date.now();
 
                 const resize = () => {
-                    canvas.width = canvas.parentElement.clientWidth;
-                    canvas.height = canvas.parentElement.clientHeight;
+                    // Obligamos a que la resolución interna sea 1:1 (cuadrada)
+                    // basándonos en el ancho real para evitar elementos estirados
+                    const size = canvas.parentElement.clientWidth || 280;
+                    canvas.width = size;
+                    canvas.height = size;
                 };
                 resize();
+                // Escuchamos el resize por si el usuario voltea el teléfono
+                window.addEventListener('resize', resize);
 
                 const truck = { width: 70, height: 42, x: canvas.width/2 - 35, y: canvas.height - 50 };
                 const boxes = [];
@@ -335,7 +351,7 @@
                             boxes.splice(i, 1);
                             continue;
                         }
-                        drawBoxShape(ctx, b.x, b.y, b.size);
+                        drawBoxShape(ctx, b.x, b.y, b.size, boxImg);
                     }
 
                     const scale = 1 + truckInflate * 0.15;
@@ -349,7 +365,10 @@
                 };
                 animationId = requestAnimationFrame(loop);
 
-                return () => cancelAnimationFrame(animationId);
+                return () => {
+                    cancelAnimationFrame(animationId);
+                    window.removeEventListener('resize', resize);
+                };
             }, [logoImg]);
 
             return <canvas ref={canvasRef} className="w-full h-full rounded-3xl"></canvas>;
@@ -366,6 +385,13 @@
             const logoImg = useMemo(() => {
                 const img = new Image();
                 img.src = ASSETS.logoClasem;
+                return img;
+            }, []);
+            
+            // Precargar imagen de caja
+            const boxImg = useMemo(() => {
+                const img = new Image();
+                img.src = ASSETS.caja;
                 return img;
             }, []);
 
@@ -495,7 +521,7 @@
                             continue;
                         }
 
-                        drawBoxShape(ctx, b.x, b.y, b.size);
+                        drawBoxShape(ctx, b.x, b.y, b.size, boxImg);
                     }
 
                     // Actualizar y dibujar partículas
@@ -750,36 +776,73 @@
         };
 
         const TutorialView = ({ onNext }) => (
-            <div className="flex flex-col h-full p-8 fade-enter text-center overflow-y-auto">
-                <TopBrandBar />
+            <div className="flex flex-col items-center justify-between h-full p-6 fade-enter text-center bg-white relative">
                 
-                <h2 className="text-3xl font-extrabold text-slate-800 mb-2 mt-2">¿Cómo ganar?</h2>
-                <p className="text-slate-600 mb-4 text-sm font-medium">Mueve el camión y <strong className="text-[#F9137C]">atrapa las cajas</strong> en 30 segundos.</p>
+                {/* Logo Arboleda Top */}
+                <div className="w-full flex justify-center pt-8 pop-in shrink-0" style={{animationDelay: '0.1s'}}>
+                    <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-[4.5rem] object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
+                </div>
                 
-                <div className="w-full h-32 bg-white rounded-3xl relative overflow-hidden mb-6 shadow-inner border border-slate-200 shrink-0">
+                {/* Icono e Instrucción */}
+                <div className="flex flex-col items-center mt-2 pop-in shrink-0" style={{animationDelay: '0.2s'}}>
+                    <img src={ASSETS.foco} alt="Foco" className="h-10 mb-1 drop-shadow-md" />
+                    <h2 className="text-[2rem] leading-[1.1] font-black text-[#0878A4]">
+                        ¿Cómo ganas?
+                    </h2>
+                </div>
+                
+                {/* Animación del juego */}
+                <div className="w-full max-w-[280px] aspect-square bg-[#f1f5f9] rounded-[2rem] relative overflow-hidden my-3 shadow-inner shrink-0 pop-in" style={{animationDelay: '0.3s'}}>
                     <MiniGamePreview />
                 </div>
                 
-                <div className="grid grid-cols-3 gap-2 w-full mb-6 shrink-0">
-                    {ASSETS.prizes.map((prize, idx) => (
-                        <div key={prize.id} className="bg-white rounded-2xl p-2 flex flex-col items-center justify-center shadow-sm border border-slate-100 slide-up text-center h-full" style={{animationDelay: `${idx * 0.1}s`}}>
-                            <img src={prize.image} className="h-12 w-12 object-contain mb-2 drop-shadow-sm" alt={prize.name} />
-                            <div className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Tier {idx+1}</div>
-                            <div className="text-xs font-bold text-[#0878A4] leading-tight mb-2 min-h-[28px] flex items-center">{prize.name}</div>
-                            <div className="text-[#F9137C] font-bold text-[11px] bg-pink-50 w-full rounded py-1 border border-pink-100/50">
-                                📦 {prize.minBoxes}
+                {/* Textos */}
+                <div className="w-full max-w-sm flex flex-col items-center gap-1 pop-in shrink-0" style={{animationDelay: '0.4s'}}>
+                    <p className="text-[#F9137C] text-[13px] sm:text-sm font-medium leading-tight px-4">
+                        Mueve el camión de mudanza y<br/>atrapa todas las cajas que puedas<br/>en <strong className="font-black">30 segundos.</strong>
+                    </p>
+                    <p className="text-[#0878A4] text-[13px] sm:text-sm font-medium leading-tight mt-1">
+                        ¡Tienes <strong className="font-black">5 intentos</strong> para lograr tu mejor puntaje!
+                    </p>
+                </div>
+
+                {/* Premios Horizontales */}
+                <div className="flex justify-center items-end gap-6 w-full my-4 shrink-0 pop-in" style={{animationDelay: '0.5s'}}>
+                    {ASSETS.prizes.map((prize, idx) => {
+                        const heights = ['h-10', 'h-16', 'h-[5.5rem]']; // Escala: Micro, Lavadora, Refri
+                        return (
+                            <div key={prize.id} className="flex flex-col items-center">
+                                <img 
+                                    src={prize.image} 
+                                    className={`${heights[idx]} object-contain mb-1 drop-shadow-md`} 
+                                    alt={prize.name} 
+                                />
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[#F9137C] font-black text-xl leading-none">{prize.minBoxes}</span>
+                                    <img src={ASSETS.caja} alt="Caja" className="h-5 object-contain" />
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
-                <div className="bg-blue-50 text-[#0878A4] text-[11px] leading-snug p-3 rounded-xl mb-6 border border-blue-100 mt-auto shrink-0 text-left flex items-start gap-2">
-                    <span className="text-base">💡</span>
-                    <span>Tienes hasta <strong>5 intentos</strong> para lograr tu mejor puntaje. Si ganas la refrigeradora, ¡el juego termina y es tuya!</span>
+                {/* Botón y Flecha */}
+                <div className="flex items-center justify-center gap-4 w-full max-w-sm mt-auto mb-2 shrink-0 pop-in" style={{animationDelay: '0.6s'}}>
+                    <Button onClick={onNext} className="!w-auto px-10 uppercase text-[250%] leading-none tracking-wider py-3 rounded-2xl font-black">
+                        JUGAR
+                    </Button>
+                    
+                    {/* Flecha Derecha */}
+                    <div className="text-[#F9137C] animate-bounce-right shrink-0">
+                        <svg width="24" height="40" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 0L24 20L0 40V0Z" />
+                        </svg>
+                    </div>
                 </div>
 
-                <div className="pb-4 shrink-0">
-                    <Button onClick={onNext}>¡EMPEZAR A JUGAR!</Button>
+                {/* Logo Clasem Bottom */}
+                <div className="w-full flex justify-center pb-6 pt-2 pop-in shrink-0" style={{animationDelay: '0.7s'}}>
+                    <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-8 object-contain" />
                 </div>
             </div>
         );
