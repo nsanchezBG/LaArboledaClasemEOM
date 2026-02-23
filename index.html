@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>La Arboleda - Juego de Premios</title>
+    
+    <!-- Google Fonts: Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Firebase SDK (v11) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Expose Firebase to the global scope for React to use
+        window.FirebaseAPI = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, serverTimestamp };
+    </script>
+
+    <style>
+        /* Custom Animations & Styles */
+        body { margin: 0; overflow: hidden; background-color: #ffffff; font-family: 'Montserrat', sans-serif; touch-action: none; }
+        .app-container { max-width: 480px; margin: 0 auto; height: 100vh; height: 100dvh; position: relative; overflow: hidden; background-color: #ffffff; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
+        
+        .fade-enter { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        .slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .bounce-in { animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.26, 1.55) forwards; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+        
+        /* Nuevas Animaciones para Splashscreen */
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.5); }
+            60% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .pop-in { animation: popIn 0.7s cubic-bezier(0.68, -0.55, 0.26, 1.55) forwards; opacity: 0; }
+        
+        @keyframes spinSlow { 100% { transform: rotate(360deg); } }
+        .spin-slow { animation: spinSlow 20s linear infinite; }
+
+        @keyframes bounceDown { 
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(8px); }
+        }
+        .animate-bounce-down { animation: bounceDown 1.5s ease-in-out infinite; }
+
+        @keyframes truckSlide {
+            0%, 100% { transform: translateX(-60px); }
+            50% { transform: translateX(60px); }
+        }
+        @keyframes boxFall {
+            0% { transform: translateY(-30px); opacity: 0; }
+            10% { opacity: 1; }
+            70% { transform: translateY(50px); opacity: 1; }
+            80%, 100% { transform: translateY(50px); opacity: 0; }
+        }
+
+        /* Ocultar scrollbars */
+        ::-webkit-scrollbar { display: none; }
+        
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.5); }
+        .text-brand { color: #0878A4; } /* Azul Inmobiliaria */
+        .text-accent { color: #F9137C; } /* Rosa Resaltado */
+        .bg-brand { background-color: #F9137C; color: #ffffff; } /* Rosa para botones */
+        .bg-brand:hover { background-color: #d80b68; }
+        .bg-primary { background-color: #0878A4; } /* Azul para fondos */
+        
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- CONFIGURACIÓN Y ASSETS ---
+        const ASSETS = {
+            logoClasem: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/logoclasem.png?raw=true',
+            logoArboleda: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/logoarboleda.png?raw=true',
+            rueda: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/rueda.png?raw=true',
+            bodegon: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/bodegon.png?raw=true',
+            prizes: [
+                { id: 'tier1', name: 'Microondas', minBoxes: 15, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/microondas.png?raw=true' },
+                { id: 'tier2', name: 'Lavadora', minBoxes: 25, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/lavadora.png?raw=true' },
+                { id: 'tier3', name: 'Refrigeradora', minBoxes: 35, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/refri.webp?raw=true' }
+            ]
+        };
+
+        const MAX_ATTEMPTS = 5;
+        const GAME_DURATION = 30; // Segundos
+
+        // --- SISTEMA DE BASE DE DATOS (MOCK / FIREBASE) ---
+        // Preparado para Looker Studio con estructura plana
+        const DBService = {
+            db: null,
+            user: null,
+            isMock: true,
+            
+            async init() {
+                try {
+                    // Intenta inicializar Firebase si existe la configuración (en producción)
+                    if (typeof window.FirebaseAPI !== 'undefined' && typeof __firebase_config !== 'undefined' && __firebase_config) {
+                        const config = JSON.parse(__firebase_config);
+                        const app = window.FirebaseAPI.initializeApp(config);
+                        const auth = window.FirebaseAPI.getAuth(app);
+                        this.db = window.FirebaseAPI.getFirestore(app);
+                        
+                        // Autenticación asegurada con Custom Token
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await window.FirebaseAPI.signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await window.FirebaseAPI.signInAnonymously(auth);
+                        }
+                        
+                        // Escuchar estado de auth
+                        window.FirebaseAPI.onAuthStateChanged(auth, (user) => {
+                            if (user) this.user = user;
+                        });
+
+                        this.user = auth.currentUser;
+                        this.isMock = false;
+                        console.log("Firebase conectado correctamente.");
+                    } else {
+                        console.log("Modo Demo: Base de datos desconectada (Mock).");
+                    }
+                } catch (error) {
+                    console.log("Modo Demo: Usando base de datos local (Mock). Error:", error);
+                }
+            },
+
+            async savePlayerResult(data) {
+                if (!this.isMock && !this.user) {
+                    console.error("Error guardando: Usuario no autenticado.");
+                    return false;
+                }
+
+                const payload = {
+                    ...data,
+                    userId: this.user ? this.user.uid : 'mock-user-id',
+                    attemptsDetails: JSON.stringify(data.attempts), // Array stringified for Looker Studio flat schema
+                    timestamp: this.isMock ? new Date().toISOString() : window.FirebaseAPI.serverTimestamp(),
+                };
+
+                if (this.isMock) {
+                    console.log("💾 [Mock DB] Datos guardados:", payload);
+                    return true;
+                } else {
+                    try {
+                        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                        // Guardamos en un path público para fácil recolección desde Looker Studio
+                        const colRef = window.FirebaseAPI.collection(this.db, 'artifacts', appId, 'public', 'data', 'arboleda_winners');
+                        await window.FirebaseAPI.addDoc(colRef, payload);
+                        return true;
+                    } catch (e) {
+                        console.error("Error guardando en Firestore:", e);
+                        return false;
+                    }
+                }
+            }
+        };
+
+        // --- COMPONENTES UI REUTILIZABLES ---
+        const TopBrandBar = () => (
+            <div className="w-full flex justify-between items-center mb-6 shrink-0 pt-4 px-2">
+                <img src={ASSETS.logoClasem} alt="Clasem" className="h-6 object-contain drop-shadow-sm" />
+                <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-6 object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
+            </div>
+        );
+
+        const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
+            const baseClass = "w-full py-4 rounded-xl font-bold text-lg transition-transform transform active:scale-95 shadow-lg flex justify-center items-center gap-2";
+            const variants = {
+                primary: "bg-brand text-white hover:bg-pink-700",
+                secondary: "bg-white text-accent border-2 border-[#F9137C] hover:bg-pink-50",
+                disabled: "bg-gray-300 text-gray-500 cursor-not-allowed"
+            };
+            return (
+                <button onClick={onClick} className={`${baseClass} ${variants[variant]} ${className}`} disabled={variant === 'disabled'}>
+                    {children}
+                </button>
+            );
+        };
+
+        // --- FUNCIONES DE DIBUJO COMPARTIDAS ---
+        const drawTruckShape = (ctx, x, y, w, h, logoImg) => {
+            ctx.fillStyle = '#0878A4'; // Cabina Azul
+            ctx.beginPath();
+            ctx.roundRect(x + w*0.7, y + h*0.2, w*0.3, h*0.8, 5);
+            ctx.fill();
+            
+            ctx.fillStyle = '#e2e8f0'; // Ventana
+            ctx.fillRect(x + w*0.75, y + h*0.3, w*0.2, h*0.3);
+
+            ctx.fillStyle = '#f8fafc'; // Caja trasera (blanca)
+            ctx.beginPath();
+            ctx.roundRect(x, y, w*0.75, h, 8);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Llantas
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(x + w*0.2, y + h, 12, 0, Math.PI * 2);
+            ctx.arc(x + w*0.8, y + h, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#cbd5e1'; // rines
+            ctx.beginPath();
+            ctx.arc(x + w*0.2, y + h, 5, 0, Math.PI * 2);
+            ctx.arc(x + w*0.8, y + h, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Logo pintado en el camión (Livery)
+            if (logoImg && logoImg.complete && logoImg.naturalWidth !== 0) {
+                const logoW = w * 0.55;
+                const aspect = logoImg.naturalHeight / logoImg.naturalWidth;
+                const logoH = logoW * aspect;
+                ctx.drawImage(logoImg, x + (w*0.75)/2 - logoW/2, y + h/2 - logoH/2, logoW, logoH);
+            } else {
+                ctx.fillStyle = '#0878A4';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillText('CLASEM', x + 5, y + h/2 + 5);
+            }
+        };
+
+        const drawBoxShape = (ctx, x, y, size) => {
+            ctx.fillStyle = '#d97706'; // Color cartón
+            ctx.fillRect(x, y, size, size);
+            ctx.fillStyle = '#b45309'; // Cinta adhesiva
+            ctx.fillRect(x + size/2 - 2, y, 4, size);
+            ctx.fillRect(x, y + size/2 - 2, size, 4);
+            // Símbolo
+            ctx.fillStyle = '#fef3c7';
+            ctx.font = `${Math.floor(size*0.45)}px sans-serif`;
+            ctx.fillText('📦', x + size*0.1, y + size - size*0.15);
+        };
+
+        // --- COMPONENTE MINI-TUTORIAL (SIMULACIÓN DE MOTOR) ---
+        const MiniGamePreview = () => {
+            const canvasRef = useRef(null);
+            const logoImg = useMemo(() => {
+                const img = new Image();
+                img.src = ASSETS.logoClasem;
+                return img;
+            }, []);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let animationId;
+                let lastTime = Date.now();
+
+                const resize = () => {
+                    canvas.width = canvas.parentElement.clientWidth;
+                    canvas.height = canvas.parentElement.clientHeight;
+                };
+                resize();
+
+                const truck = { width: 70, height: 42, x: canvas.width/2 - 35, y: canvas.height - 50 };
+                const boxes = [];
+                let boxSpawnTimer = 0;
+                let truckInflate = 0;
+
+                const loop = () => {
+                    const now = Date.now();
+                    const dt = (now - lastTime) / 1000;
+                    lastTime = now;
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#0878A410'; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(0, canvas.height - 15, canvas.width, 15);
+
+                    // Auto move truck smoothly with sine wave
+                    truck.x = (canvas.width / 2 - truck.width/2) + Math.sin(now / 500) * (canvas.width/2 - truck.width);
+                    truck.y = canvas.height - truck.height - 10;
+
+                    truckInflate = Math.max(0, truckInflate - dt * 6);
+
+                    boxSpawnTimer -= dt;
+                    if (boxSpawnTimer <= 0) {
+                        boxes.push({ x: Math.random() * (canvas.width - 25), y: -30, size: 25, speed: 120 });
+                        boxSpawnTimer = 0.8;
+                    }
+
+                    for (let i = boxes.length - 1; i >= 0; i--) {
+                        let b = boxes[i];
+                        b.y += b.speed * dt;
+
+                        if (b.y + b.size > truck.y && b.y < truck.y + truck.height && b.x + b.size > truck.x && b.x < truck.x + truck.width) {
+                            truckInflate = 1;
+                            boxes.splice(i, 1);
+                            continue;
+                        }
+                        if (b.y > canvas.height) {
+                            boxes.splice(i, 1);
+                            continue;
+                        }
+                        drawBoxShape(ctx, b.x, b.y, b.size);
+                    }
+
+                    const scale = 1 + truckInflate * 0.15;
+                    ctx.save();
+                    ctx.translate(truck.x + truck.width/2, truck.y + truck.height/2);
+                    ctx.scale(scale, scale);
+                    drawTruckShape(ctx, -truck.width/2, -truck.height/2, truck.width, truck.height, logoImg);
+                    ctx.restore();
+
+                    animationId = requestAnimationFrame(loop);
+                };
+                animationId = requestAnimationFrame(loop);
+
+                return () => cancelAnimationFrame(animationId);
+            }, [logoImg]);
+
+            return <canvas ref={canvasRef} className="w-full h-full rounded-3xl"></canvas>;
+        };
+
+        // --- MOTOR DEL JUEGO (CANVAS) ---
+        const GameEngine = ({ onGameOver }) => {
+            const canvasRef = useRef(null);
+            const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+            const [score, setScore] = useState(0);
+            const [showTimeUp, setShowTimeUp] = useState(false);
+            
+            // Precargar logo de Clasem para pintar en el camión
+            const logoImg = useMemo(() => {
+                const img = new Image();
+                img.src = ASSETS.logoClasem;
+                return img;
+            }, []);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let animationId;
+                let lastTime = Date.now();
+                
+                // Ajustar tamaño
+                const resize = () => {
+                    canvas.width = canvas.parentElement.clientWidth;
+                    canvas.height = canvas.parentElement.clientHeight;
+                };
+                resize();
+                window.addEventListener('resize', resize);
+
+                // Estado del juego
+                let gameTime = GAME_DURATION;
+                let boxesCaught = 0;
+                let isFinished = false;
+                
+                const truck = {
+                    width: 100,
+                    height: 60,
+                    x: canvas.width / 2 - 50,
+                    y: canvas.height - 80,
+                    color: '#0878A4'
+                };
+
+                const boxes = [];
+                let boxSpawnTimer = 0;
+                let truckInflate = 0;
+                let particles = [];
+
+                // Controles (Touch y Mouse)
+                const handleMove = (e) => {
+                    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const rect = canvas.getBoundingClientRect();
+                    let targetX = clientX - rect.left - truck.width / 2;
+                    // Limites
+                    if (targetX < 0) targetX = 0;
+                    if (targetX > canvas.width - truck.width) targetX = canvas.width - truck.width;
+                    truck.x = targetX;
+                };
+
+                canvas.addEventListener('touchmove', handleMove, { passive: true });
+                canvas.addEventListener('mousemove', handleMove);
+
+                // Bucle principal
+                const gameLoop = () => {
+                    if (isFinished) return;
+
+                    const now = Date.now();
+                    const dt = (now - lastTime) / 1000;
+                    lastTime = now;
+
+                    // Actualizar tiempo
+                    gameTime -= dt;
+                    if (gameTime <= 0) {
+                        isFinished = true;
+                        setTimeLeft(0);
+                        setShowTimeUp(true);
+                        setTimeout(() => {
+                            onGameOver(boxesCaught);
+                        }, 2000);
+                        return; // Fin del juego pausado
+                    }
+                    setTimeLeft(Math.ceil(gameTime));
+
+                    // Limpiar canvas
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // Fondo decorativo de ciudad/paisaje simple
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillRect(0, canvas.height - 30, canvas.width, 30); // Pista
+
+                    // Spawn Cajas (cada 0.7 seg para reducir cantidad en ~20%)
+                    boxSpawnTimer -= dt;
+                    if (boxSpawnTimer <= 0) {
+                        boxes.push({
+                            x: Math.random() * (canvas.width - 40),
+                            y: -40,
+                            size: 35,
+                            speed: 150 + Math.random() * 100 // velocidad variable
+                        });
+                        boxSpawnTimer = 0.7;
+                    }
+
+                    // Actualizar estado de inflado del camión
+                    truckInflate = Math.max(0, truckInflate - dt * 6);
+
+                    // Actualizar y dibujar cajas
+                    for (let i = boxes.length - 1; i >= 0; i--) {
+                        let b = boxes[i];
+                        b.y += b.speed * dt;
+                        
+                        // Colisión (AABB simple)
+                        if (
+                            b.y + b.size > truck.y &&
+                            b.y < truck.y + truck.height &&
+                            b.x + b.size > truck.x &&
+                            b.x < truck.x + truck.width
+                        ) {
+                            // Atrapada!
+                            boxesCaught++;
+                            setScore(boxesCaught);
+                            boxes.splice(i, 1);
+
+                            // Efectos visuales: Inflar y emitir partículas
+                            truckInflate = 1;
+                            for(let p = 0; p < 8; p++) {
+                                particles.push({
+                                    x: truck.x + truck.width / 2,
+                                    y: truck.y,
+                                    vx: (Math.random() - 0.5) * 300,
+                                    vy: (Math.random() - 1) * 300,
+                                    life: 1
+                                });
+                            }
+                            continue;
+                        }
+
+                        // Fuera de pantalla
+                        if (b.y > canvas.height) {
+                            boxes.splice(i, 1);
+                            continue;
+                        }
+
+                        drawBoxShape(ctx, b.x, b.y, b.size);
+                    }
+
+                    // Actualizar y dibujar partículas
+                    for (let i = particles.length - 1; i >= 0; i--) {
+                        let p = particles[i];
+                        p.x += p.vx * dt;
+                        p.y += p.vy * dt;
+                        p.vy += 800 * dt; // gravedad
+                        p.life -= dt * 1.5;
+                        
+                        if (p.life <= 0) {
+                            particles.splice(i, 1);
+                        } else {
+                            ctx.fillStyle = `rgba(249, 19, 124, ${p.life})`;
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+
+                    // Dibujar camión
+                    // Actualizar Y por si cambió el resize
+                    truck.y = canvas.height - truck.height - 20;
+                    
+                    const scale = 1 + truckInflate * 0.15;
+                    ctx.save();
+                    ctx.translate(truck.x + truck.width/2, truck.y + truck.height/2);
+                    ctx.scale(scale, scale);
+                    drawTruckShape(ctx, -truck.width/2, -truck.height/2, truck.width, truck.height, logoImg);
+                    ctx.restore();
+
+                    animationId = requestAnimationFrame(gameLoop);
+                };
+
+                animationId = requestAnimationFrame(gameLoop);
+
+                return () => {
+                    cancelAnimationFrame(animationId);
+                    window.removeEventListener('resize', resize);
+                    canvas.removeEventListener('touchmove', handleMove);
+                    canvas.removeEventListener('mousemove', handleMove);
+                };
+            }, [onGameOver]);
+
+            return (
+                <div className="relative w-full h-full bg-blue-50">
+                    <div className="absolute top-6 left-0 right-0 px-6 flex justify-between items-center z-10 pointer-events-none">
+                        <div className="glass-panel px-4 py-2 rounded-2xl flex items-center gap-2 shadow-md">
+                            <span className="text-xl">⏱️</span>
+                            <span className="font-bold text-xl text-slate-700">00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
+                        </div>
+                        <div className="glass-panel px-4 py-2 rounded-2xl flex items-center gap-2 bg-[#F9137C] text-white border-none shadow-md">
+                            <span className="text-xl">📦</span>
+                            <span className="font-bold text-xl">{score}</span>
+                        </div>
+                    </div>
+                    <canvas ref={canvasRef} className="w-full h-full cursor-none"></canvas>
+                    
+                    {showTimeUp && (
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-40 flex items-center justify-center fade-enter">
+                            <div className="bg-white p-8 rounded-[2rem] shadow-2xl bounce-in text-center flex flex-col items-center">
+                                <span className="text-6xl mb-2">⏱️</span>
+                                <h2 className="text-4xl font-black text-[#F9137C]">¡TIEMPO!</h2>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- PANTALLAS (VIEWS) ---
+
+        const SplashView = ({ onNext }) => (
+            <div className="flex flex-col items-center justify-between h-full p-6 fade-enter text-center bg-white relative">
+                
+                {/* Logo Arboleda Top */}
+                <div className="w-full flex justify-center pt-8 pop-in" style={{animationDelay: '0.1s'}}>
+                    <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-20 object-contain drop-shadow-sm" />
+                </div>
+                
+                {/* Titles */}
+                <div className="mt-2 pop-in" style={{animationDelay: '0.2s'}}>
+                    <h1 className="text-3xl sm:text-4xl font-black text-[#0878A4] leading-[0.75] uppercase tracking-tight">
+                        ¡AMUEBLA TU<br/>NUEVO HOGAR!
+                    </h1>
+                </div>
+
+                {/* Bodegón Unificado con Rueda */}
+                <div className="relative w-full flex-1 flex justify-center items-center my-4 min-h-[260px] max-h-[350px]">
+                    {/* Rueda giratoria */}
+                    <img src={ASSETS.rueda} className="absolute w-[100%] max-w-[380px] spin-slow z-0 pop-in opacity-80" style={{animationDelay: '0.3s'}} alt="Fondo Animado" />
+                    
+                    {/* Bodegón */}
+                    <img src={ASSETS.bodegon} className="relative w-[95%] max-w-[360px] object-contain drop-shadow-2xl pop-in z-10" style={{animationDelay: '0.4s'}} alt="Premios" />
+                </div>
+
+                {/* Text & CTA */}
+                <div className="w-full flex flex-col items-center pop-in z-20 -mt-2" style={{animationDelay: '0.5s'}}>
+                    <h2 className="text-[#F9137C] font-bold text-lg sm:text-xl leading-[0.75] mb-1">
+                        Juega y llévate un<br/>electrodoméstico
+                    </h2>
+                    <h1 className="text-[#F9137C] font-black text-[3.2rem] uppercase mt-0 mb-1 tracking-wide leading-[0.75]">
+                        GRATIS
+                    </h1>
+                    
+                    {/* Bouncing Arrow */}
+                    <div className="animate-bounce-down mb-4 mt-2 text-[#F9137C]">
+                        <svg width="40" height="24" viewBox="0 0 40 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 24L0 0H40L20 24Z" />
+                        </svg>
+                    </div>
+
+                    <Button onClick={onNext} className="uppercase text-[300%] leading-none tracking-wider py-4 rounded-3xl w-[90%] max-w-sm mb-4 font-black">
+                        PARTICIPAR
+                    </Button>
+                </div>
+
+                {/* Logo Clasem Bottom */}
+                <div className="w-full flex justify-center pb-6 pop-in shrink-0" style={{animationDelay: '0.6s'}}>
+                    <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-8 object-contain" />
+                </div>
+            </div>
+        );
+
+        const RegisterView = ({ onNext }) => {
+            const [name, setName] = useState('');
+            const [dni, setDni] = useState('');
+            const [terms, setTerms] = useState(false);
+            const [showTermsModal, setShowTermsModal] = useState(false);
+
+            const isValid = name.trim().length > 3 && dni.length >= 8 && terms;
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if(isValid) onNext({ name, dni });
+            };
+
+            return (
+                <div className="flex flex-col h-full p-8 fade-enter relative">
+                    <TopBrandBar />
+                    <h2 className="text-3xl font-bold text-slate-800 mb-6 mt-2">Regístrate para jugar</h2>
+                    
+                    <form className="flex-1 flex flex-col gap-5" onSubmit={handleSubmit}>
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-600 mb-1">Nombre Completo</label>
+                            <input 
+                                type="text" 
+                                required
+                                value={name} onChange={e => setName(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0878A4] focus:ring-2 focus:ring-[#0878A4] focus:outline-none bg-white/70 backdrop-blur-sm"
+                                placeholder="Ej. Juan Pérez"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-600 mb-1">DNI</label>
+                            <input 
+                                type="tel" 
+                                required maxLength={8}
+                                value={dni} onChange={e => setDni(e.target.value.replace(/[^0-9]/g, ''))}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0878A4] focus:ring-2 focus:ring-[#0878A4] focus:outline-none bg-white/70 backdrop-blur-sm"
+                                placeholder="8 dígitos"
+                            />
+                        </div>
+                        
+                        <div className="flex items-start gap-3 mt-2">
+                            <input 
+                                type="checkbox" id="terms" 
+                                checked={terms} onChange={e => setTerms(e.target.checked)}
+                                className="mt-1 w-5 h-5 accent-[#F9137C]"
+                            />
+                            <label htmlFor="terms" className="text-sm text-slate-600 leading-tight">
+                                Acepto los <button type="button" onClick={(e) => {e.preventDefault(); setShowTermsModal(true);}} className="text-[#0878A4] underline font-semibold">Términos y Condiciones</button> de la campaña.
+                            </label>
+                        </div>
+                        
+                        <div className="mt-auto pb-8">
+                            <Button variant={isValid ? 'primary' : 'disabled'} onClick={handleSubmit}>Siguiente</Button>
+                        </div>
+                    </form>
+
+                    {/* Modal Términos */}
+                    {showTermsModal && (
+                        <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4 fade-enter">
+                            <div className="bg-white rounded-2xl p-6 w-full max-h-[80%] overflow-y-auto shadow-2xl">
+                                <h3 className="text-xl font-bold mb-4">Términos y Condiciones</h3>
+                                <div className="text-sm text-slate-600 space-y-3 mb-6">
+                                    <p>1. Promoción válida para clientes registrados de CLASEM Inmobiliaria.</p>
+                                    <p>2. Cada usuario tiene un máximo de 5 intentos para alcanzar el puntaje necesario.</p>
+                                    <p>3. Los premios no son acumulables. Solo se entregará el premio correspondiente al nivel (Tier) más alto alcanzado y guardado por el usuario.</p>
+                                    <p>4. El código generado al final debe ser validado por un asesor de ventas para hacer efectivo el premio durante la separación de su departamento en "La Arboleda".</p>
+                                </div>
+                                <Button onClick={() => setShowTermsModal(false)}>Cerrar</Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const TutorialView = ({ onNext }) => (
+            <div className="flex flex-col h-full p-8 fade-enter text-center overflow-y-auto">
+                <TopBrandBar />
+                
+                <h2 className="text-3xl font-extrabold text-slate-800 mb-2 mt-2">¿Cómo ganar?</h2>
+                <p className="text-slate-600 mb-4 text-sm font-medium">Mueve el camión y <strong className="text-[#F9137C]">atrapa las cajas</strong> en 30 segundos.</p>
+                
+                <div className="w-full h-32 bg-white rounded-3xl relative overflow-hidden mb-6 shadow-inner border border-slate-200 shrink-0">
+                    <MiniGamePreview />
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2 w-full mb-6 shrink-0">
+                    {ASSETS.prizes.map((prize, idx) => (
+                        <div key={prize.id} className="bg-white rounded-2xl p-2 flex flex-col items-center justify-center shadow-sm border border-slate-100 slide-up text-center h-full" style={{animationDelay: `${idx * 0.1}s`}}>
+                            <img src={prize.image} className="h-12 w-12 object-contain mb-2 drop-shadow-sm" alt={prize.name} />
+                            <div className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Tier {idx+1}</div>
+                            <div className="text-xs font-bold text-[#0878A4] leading-tight mb-2 min-h-[28px] flex items-center">{prize.name}</div>
+                            <div className="text-[#F9137C] font-bold text-[11px] bg-pink-50 w-full rounded py-1 border border-pink-100/50">
+                                📦 {prize.minBoxes}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="bg-blue-50 text-[#0878A4] text-[11px] leading-snug p-3 rounded-xl mb-6 border border-blue-100 mt-auto shrink-0 text-left flex items-start gap-2">
+                    <span className="text-base">💡</span>
+                    <span>Tienes hasta <strong>5 intentos</strong> para lograr tu mejor puntaje. Si ganas la refrigeradora, ¡el juego termina y es tuya!</span>
+                </div>
+
+                <div className="pb-4 shrink-0">
+                    <Button onClick={onNext}>¡EMPEZAR A JUGAR!</Button>
+                </div>
+            </div>
+        );
+
+        const TransitionView = ({ attemptCount, onAnimationEnd }) => {
+            useEffect(() => {
+                const timer = setTimeout(onAnimationEnd, 2000);
+                return () => clearTimeout(timer);
+            }, [onAnimationEnd]);
+
+            return (
+                <div className="flex flex-col items-center justify-center h-full bg-primary text-white fade-enter">
+                    <div className="text-6xl mb-4 bounce-in">🚚</div>
+                    <h2 className="text-3xl font-bold text-white mb-2">Intento {attemptCount} de {MAX_ATTEMPTS}</h2>
+                    <p className="text-blue-100 animate-pulse">¡Prepárate!</p>
+                </div>
+            );
+        };
+
+        const getPrizeForScore = (score) => {
+            // Evaluamos desde el más alto (Tier 3) al más bajo
+            for (let i = ASSETS.prizes.length - 1; i >= 0; i--) {
+                if (score >= ASSETS.prizes[i].minBoxes) {
+                    return ASSETS.prizes[i];
+                }
+            }
+            return null; // Ningún premio
+        };
+
+        const ResultView = ({ score, attemptCount, bestScore, onRetry, onClaim }) => {
+            const currentPrize = getPrizeForScore(score);
+            const bestPrize = getPrizeForScore(bestScore);
+            const attemptsLeft = MAX_ATTEMPTS - attemptCount;
+
+            return (
+                <div className="flex flex-col h-full p-8 fade-enter text-center items-center justify-center">
+                    <TopBrandBar />
+                    <div className="flex-1 flex flex-col items-center justify-center w-full">
+                        <div className="text-5xl mb-4 slide-up mt-4">📦</div>
+                        <h2 className="text-3xl font-extrabold text-slate-800 mb-2 slide-up" style={{animationDelay:'0.1s'}}>
+                            ¡Atrapaste {score} cajas!
+                        </h2>
+                        
+                        <div className="my-6 w-full max-w-sm glass-panel p-6 rounded-3xl shadow-xl slide-up" style={{animationDelay:'0.2s'}}>
+                            {currentPrize ? (
+                                <>
+                                    <p className="text-slate-600 text-sm mb-2 font-semibold">Con este puntaje aseguras:</p>
+                                    <img src={currentPrize.image} className="h-32 mx-auto object-contain mb-4 drop-shadow-lg bounce-in" style={{animationDelay:'0.4s'}} alt="Premio" />
+                                    <h3 className="text-2xl font-bold text-[#F9137C]">{currentPrize.name}</h3>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-slate-600 mb-2 font-semibold">Aún no alcanzas un premio.</p>
+                                    <p className="text-sm text-slate-500">Mínimo necesario: {ASSETS.prizes[0].minBoxes} cajas.</p>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="w-full flex flex-col gap-4 mt-auto pb-4 slide-up" style={{animationDelay:'0.3s'}}>
+                            {attemptsLeft > 0 ? (
+                                <>
+                                    {currentPrize && (
+                                        <Button variant="secondary" onClick={onClaim}>
+                                            Reclamar mi {currentPrize.name} ahora
+                                        </Button>
+                                    )}
+                                    <Button variant="primary" onClick={onRetry}>
+                                        Jugar de nuevo ({attemptsLeft} intentos)
+                                    </Button>
+                                    {bestPrize && bestScore > score && (
+                                        <p className="text-xs text-slate-500 mt-2">No te preocupes, mantienes tu mejor premio: <strong>{bestPrize.name}</strong></p>
+                                    )}
+                                </>
+                            ) : (
+                                <Button onClick={onClaim}>
+                                    Continuar
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const WinnerView = ({ userData, bestScore, uniqueCode }) => {
+            const finalPrize = getPrizeForScore(bestScore);
+
+            return (
+                <div className="flex flex-col items-center h-full p-8 fade-enter text-center bg-gradient-to-b from-[#0878A4] to-[#044059] text-white overflow-y-auto">
+                    <div className="w-full flex justify-between items-center mb-6 shrink-0 pt-4">
+                        <div className="bg-white px-3 py-1.5 rounded-xl">
+                            <img src={ASSETS.logoClasem} alt="Clasem" className="h-5 object-contain" />
+                        </div>
+                        <img src={ASSETS.logoArboleda} className="h-6 object-contain" alt="Logo" />
+                    </div>
+                    
+                    {finalPrize ? (
+                        <>
+                            <div className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-2">¡Felicidades!</div>
+                            <h2 className="text-3xl font-extrabold mb-6">Eres el ganador de:</h2>
+                            
+                            <div className="relative w-full aspect-square max-w-xs mx-auto bounce-in">
+                                <div className="absolute inset-0 bg-white/20 rounded-full blur-3xl"></div>
+                                <img src={finalPrize.image} className="w-full h-full object-contain relative z-10 drop-shadow-2xl" alt={finalPrize.name} />
+                            </div>
+                            
+                            <h3 className="text-4xl font-black text-[#F9137C] mt-2 mb-8 drop-shadow-md">{finalPrize.name}</h3>
+                            
+                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 w-full border border-white/20">
+                                <p className="text-sm text-blue-100 mb-1">CÓDIGO DE GANADOR</p>
+                                <div className="text-3xl font-mono font-bold tracking-wider bg-white text-[#F9137C] py-2 rounded-lg my-2 select-all">
+                                    {uniqueCode}
+                                </div>
+                                <p className="text-xs text-blue-100 mt-3 px-2">
+                                    Tómale un screenshot a esta pantalla y preséntalo a tu asesor al separar tu depa.
+                                </p>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center">
+                            <div className="text-6xl mb-6 opacity-80">😢</div>
+                            <h2 className="text-3xl font-extrabold mb-4">¡Gracias por jugar!</h2>
+                            <p className="text-blue-100 px-4">Esta vez no lograste alcanzar el puntaje mínimo, pero tenemos grandes descuentos esperándote en caseta de ventas.</p>
+                        </div>
+                    )}
+                    
+                    <div className="text-xs text-white/50 mt-10 mb-4 font-mono">
+                        {userData.name} | DNI: {userData.dni}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- CONTROLADOR PRINCIPAL (APP) ---
+        const App = () => {
+            // Estados de vista: SPLASH, REGISTER, TUTORIAL, TRANSITION, GAME, RESULT, WINNER
+            const [view, setView] = useState('SPLASH');
+            
+            // Datos del jugador
+            const [userData, setUserData] = useState({ name: '', dni: '' });
+            const [attempts, setAttempts] = useState([]); // Array de puntajes
+            const [uniqueCode, setUniqueCode] = useState('');
+
+            // Inicializar DB en el montaje
+            useEffect(() => {
+                DBService.init();
+            }, []);
+
+            const currentAttemptCount = attempts.length + 1;
+            const bestScore = attempts.length > 0 ? Math.max(...attempts) : 0;
+
+            const generateCode = () => {
+                return 'ARB-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+            };
+
+            const finalizeGame = async () => {
+                const code = generateCode();
+                setUniqueCode(code);
+                
+                const finalPrize = getPrizeForScore(bestScore);
+                
+                // Guardar en DB (Mock o Real)
+                await DBService.savePlayerResult({
+                    playerName: userData.name,
+                    playerDni: userData.dni,
+                    bestScore: bestScore,
+                    prizeWon: finalPrize ? finalPrize.name : 'Ninguno',
+                    uniqueCode: finalPrize ? code : 'N/A',
+                    attempts: attempts
+                });
+
+                setView('WINNER');
+            };
+
+            const handleGameOver = (score) => {
+                const newAttempts = [...attempts, score];
+                setAttempts(newAttempts);
+                
+                const achievedPrize = getPrizeForScore(score);
+                
+                // Si alcanzó el premio máximo (Tier 3), terminamos automáticamente
+                if (achievedPrize && achievedPrize.id === 'tier3') {
+                    // Esperar un segundito para que el estado se actualice bien antes de ir a Winner (usamos timeout para dar fluidez)
+                    setTimeout(() => {
+                        const code = generateCode();
+                        setUniqueCode(code);
+                        DBService.savePlayerResult({
+                            playerName: userData.name,
+                            playerDni: userData.dni,
+                            bestScore: Math.max(...newAttempts), // Recalcular localmente para seguridad
+                            prizeWon: 'Refrigeradora',
+                            uniqueCode: code,
+                            attempts: newAttempts
+                        }).then(() => setView('WINNER'));
+                    }, 500);
+                } else if (newAttempts.length >= MAX_ATTEMPTS) {
+                    // Se acabaron los intentos
+                    setTimeout(() => {
+                        const finalBest = Math.max(...newAttempts);
+                        const finalP = getPrizeForScore(finalBest);
+                        const code = generateCode();
+                        setUniqueCode(code);
+                        DBService.savePlayerResult({
+                            playerName: userData.name,
+                            playerDni: userData.dni,
+                            bestScore: finalBest,
+                            prizeWon: finalP ? finalP.name : 'Ninguno',
+                            uniqueCode: finalP ? code : 'N/A',
+                            attempts: newAttempts
+                        }).then(() => setView('WINNER'));
+                    }, 500);
+                } else {
+                    setView('RESULT');
+                }
+            };
+
+            return (
+                <div className="app-container">
+                    {view === 'SPLASH' && (
+                        <SplashView onNext={() => setView('REGISTER')} />
+                    )}
+                    
+                    {view === 'REGISTER' && (
+                        <RegisterView onNext={(data) => {
+                            setUserData(data);
+                            setView('TUTORIAL');
+                        }} />
+                    )}
+                    
+                    {view === 'TUTORIAL' && (
+                        <TutorialView onNext={() => setView('TRANSITION')} />
+                    )}
+
+                    {view === 'TRANSITION' && (
+                        <TransitionView 
+                            attemptCount={currentAttemptCount} 
+                            onAnimationEnd={() => setView('GAME')} 
+                        />
+                    )}
+
+                    {view === 'GAME' && (
+                        <div className="h-full w-full fade-enter">
+                            <GameEngine onGameOver={handleGameOver} />
+                        </div>
+                    )}
+
+                    {view === 'RESULT' && (
+                        <ResultView 
+                            score={attempts[attempts.length - 1]}
+                            bestScore={bestScore}
+                            attemptCount={attempts.length}
+                            onRetry={() => setView('TRANSITION')}
+                            onClaim={finalizeGame}
+                        />
+                    )}
+
+                    {view === 'WINNER' && (
+                        <WinnerView 
+                            userData={userData}
+                            bestScore={bestScore}
+                            uniqueCode={uniqueCode}
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
