@@ -46,7 +46,7 @@
         @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
         
-        /* Nuevas Animaciones para Splashscreen */
+        /* Nuevas Animaciones para Splashscreen y Transiciones */
         @keyframes popIn {
             0% { opacity: 0; transform: scale(0.5); }
             100% { opacity: 1; transform: scale(1); }
@@ -62,12 +62,17 @@
         }
         .animate-bounce-down { animation: bounceDown 1.5s ease-in-out infinite; }
 
-        /* Nueva Animación para la flecha hacia la derecha */
         @keyframes bounceRight {
             0%, 100% { transform: translateX(0); }
             50% { transform: translateX(8px); }
         }
         .animate-bounce-right { animation: bounceRight 1.5s ease-in-out infinite; }
+
+        @keyframes bounceLeft {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(-8px); }
+        }
+        .animate-bounce-left { animation: bounceLeft 1.5s ease-in-out infinite; }
 
         /* Nueva Animación de Error/Sacudida */
         @keyframes shake {
@@ -77,7 +82,7 @@
         }
         .animate-shake { animation: shake 0.4s ease-in-out; }
 
-        /* Animaciones del Juego (Nuevas) */
+        /* Animaciones del Juego */
         @keyframes scorePop {
             0% { transform: scale(1); }
             50% { transform: scale(1.6); }
@@ -90,17 +95,6 @@
             50% { opacity: 0.35; }
         }
         .animate-warning-pulse { animation: warningPulse 1s ease-in-out infinite; }
-
-        @keyframes truckSlide {
-            0%, 100% { transform: translateX(-60px); }
-            50% { transform: translateX(60px); }
-        }
-        @keyframes boxFall {
-            0% { transform: translateY(-30px); opacity: 0; }
-            10% { opacity: 1; }
-            70% { transform: translateY(50px); opacity: 1; }
-            80%, 100% { transform: translateY(50px); opacity: 0; }
-        }
 
         /* Ocultar scrollbars */
         ::-webkit-scrollbar { display: none; }
@@ -229,7 +223,7 @@
                 disabled: "bg-[#F9137C] opacity-50 text-white cursor-not-allowed shadow-none"
             };
             return (
-                <button onClick={onClick} className={`${baseClass} ${variants[variant]} ${className}`}>
+                <button onClick={onClick} className={`${baseClass} ${variants[variant]} ${className}`} disabled={variant === 'disabled'}>
                     {children}
                 </button>
             );
@@ -295,6 +289,58 @@
             }
         };
 
+        // --- COMPONENTE CAMIÓN DE CARGA (TRANSICIÓN) ---
+        const TruckPreview = () => {
+            const canvasRef = useRef(null);
+            const logoImg = useMemo(() => {
+                const img = new Image();
+                img.src = ASSETS.logoClasem;
+                return img;
+            }, []);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let animationId;
+                let lastTime = Date.now();
+
+                const resize = () => {
+                    const size = canvas.parentElement.clientWidth;
+                    canvas.width = size;
+                    canvas.height = size * 0.6;
+                };
+                resize();
+                window.addEventListener('resize', resize);
+
+                const truck = { width: 150, height: 90, x: canvas.width/2 - 75, y: canvas.height/2 - 45 };
+
+                const loop = () => {
+                    const now = Date.now();
+                    lastTime = now;
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // Animación de flotación suave simulando marcha
+                    const floatY = Math.sin(now / 200) * 8;
+
+                    ctx.save();
+                    ctx.translate(0, floatY);
+                    drawTruckShape(ctx, truck.x, truck.y, truck.width, truck.height, logoImg);
+                    ctx.restore();
+
+                    animationId = requestAnimationFrame(loop);
+                };
+                animationId = requestAnimationFrame(loop);
+
+                return () => {
+                    cancelAnimationFrame(animationId);
+                    window.removeEventListener('resize', resize);
+                };
+            }, [logoImg]);
+
+            return <canvas ref={canvasRef} className="w-full h-full drop-shadow-2xl"></canvas>;
+        };
+
         // --- COMPONENTE MINI-TUTORIAL (SIMULACIÓN DE MOTOR) ---
         const MiniGamePreview = () => {
             const canvasRef = useRef(null);
@@ -323,7 +369,6 @@
                     canvas.height = size;
                 };
                 resize();
-                // Escuchamos el resize por si el usuario voltea el teléfono
                 window.addEventListener('resize', resize);
 
                 const truck = { width: 70, height: 42, x: canvas.width/2 - 35, y: canvas.height - 50 };
@@ -489,7 +534,7 @@
                     // Limpiar canvas
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    // Spawn Cajas (Cajas más grandes: size 45 en lugar de 35)
+                    // Spawn Cajas
                     boxSpawnTimer -= dt;
                     if (boxSpawnTimer <= 0) {
                         boxes.push({
@@ -612,7 +657,7 @@
                         {/* Izquierda: Timer */}
                         <div className="flex items-center gap-2">
                             <img src={ASSETS.timer} className="h-10 object-contain drop-shadow-md" alt="Timer" />
-                            <span className="font-black text-[2.5rem] text-[#0878A4] drop-shadow-sm leading-none mt-1.5">{timeLeft}</span>
+                            <span className="font-black text-[2.5rem] text-[#0878A4] drop-shadow-sm leading-none mt-1.5">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
                         </div>
 
                         {/* Centro: Logo (Filtro Magenta) */}
@@ -621,7 +666,7 @@
                         {/* Derecha: Score */}
                         <div className="flex items-center gap-2">
                             <img src={ASSETS.caja} className="h-9 object-contain drop-shadow-md" alt="Caja" />
-                            <span ref={scoreSpanRef} className="font-black text-[2.5rem] text-[#F9137C] drop-shadow-sm leading-none mt-1.5">{score}</span>
+                            <span ref={scoreSpanRef} className="font-black text-[2.5rem] text-[#F9137C] drop-shadow-sm leading-none mt-1.5">{score < 10 ? `0${score}` : score}</span>
                         </div>
                     </div>
                     
@@ -897,15 +942,21 @@
 
         const TransitionView = ({ attemptCount, onAnimationEnd }) => {
             useEffect(() => {
-                const timer = setTimeout(onAnimationEnd, 2000);
+                const timer = setTimeout(onAnimationEnd, 2500);
                 return () => clearTimeout(timer);
             }, [onAnimationEnd]);
 
             return (
-                <div className="flex flex-col items-center justify-center h-full bg-primary text-white fade-enter">
-                    <div className="text-6xl mb-4 bounce-in">🚚</div>
-                    <h2 className="text-3xl font-bold text-white mb-2">Intento {attemptCount} de {MAX_ATTEMPTS}</h2>
-                    <p className="text-blue-100 animate-pulse">¡Prepárate!</p>
+                <div className="flex flex-col items-center justify-center h-full bg-[#F9137C] text-white fade-enter">
+                    <div className="w-48 h-32 mb-4 bounce-in">
+                        <TruckPreview />
+                    </div>
+                    <h2 className="text-4xl sm:text-5xl font-black text-white mb-2 uppercase text-center leading-[0.9] pop-in" style={{animationDelay: '0.1s'}}>
+                        Intento<br/>{attemptCount} de {MAX_ATTEMPTS}
+                    </h2>
+                    <p className="text-pink-200 font-bold text-xl sm:text-2xl animate-pulse mt-4 pop-in" style={{animationDelay: '0.3s'}}>
+                        ¡PREPÁRATE!
+                    </p>
                 </div>
             );
         };
@@ -920,56 +971,125 @@
             return null; // Ningún premio
         };
 
-        const ResultView = ({ score, attemptCount, bestScore, onRetry, onClaim }) => {
+        const ResultView = ({ score, attemptCount, attemptsArr, onRetry, onClaim }) => {
+            // Calculamos el mejor récord histórico ANTERIOR al intento actual
+            const previousAttempts = attemptsArr.slice(0, -1);
+            const previousBestScore = previousAttempts.length > 0 ? Math.max(...previousAttempts) : 0;
+            const previousBestPrize = getPrizeForScore(previousBestScore);
+            
             const currentPrize = getPrizeForScore(score);
-            const bestPrize = getPrizeForScore(bestScore);
             const attemptsLeft = MAX_ATTEMPTS - attemptCount;
 
+            // Determina si estamos manteniendo un premio mejor/igual o ganando uno nuevo
+            const isMaintaining = previousBestPrize !== null && (!currentPrize || previousBestPrize.minBoxes >= currentPrize.minBoxes);
+            const displayPrize = isMaintaining ? previousBestPrize : currentPrize;
+            
+            const getArticle = (name) => {
+                const n = name.toLowerCase();
+                return n.includes('lavadora') || n.includes('refrigeradora') ? 'UNA' : 'UN';
+            };
+
             return (
-                <div className="flex flex-col h-full p-8 fade-enter text-center items-center justify-center">
-                    <TopBrandBar />
-                    <div className="flex-1 flex flex-col items-center justify-center w-full">
-                        <div className="text-5xl mb-4 slide-up mt-4">📦</div>
-                        <h2 className="text-3xl font-extrabold text-slate-800 mb-2 slide-up" style={{animationDelay:'0.1s'}}>
-                            ¡Atrapaste {score} cajas!
-                        </h2>
+                <div className="flex flex-col h-full p-6 fade-enter text-center items-center justify-between bg-white relative">
+                    
+                    {/* Logo Arboleda Top */}
+                    <div className="w-full flex justify-center pt-8 pop-in shrink-0" style={{animationDelay: '0.1s'}}>
+                        <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-16 object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center w-full flex-1">
                         
-                        <div className="my-6 w-full max-w-sm glass-panel p-6 rounded-3xl shadow-xl slide-up" style={{animationDelay:'0.2s'}}>
-                            {currentPrize ? (
-                                <>
-                                    <p className="text-slate-600 text-sm mb-2 font-semibold">Con este puntaje aseguras:</p>
-                                    <img src={currentPrize.image} className="h-32 mx-auto object-contain mb-4 drop-shadow-lg bounce-in" style={{animationDelay:'0.4s'}} alt="Premio" />
-                                    <h3 className="text-2xl font-bold text-[#F9137C]">{currentPrize.name}</h3>
-                                </>
+                        {/* Atrapaste Title */}
+                        <div className="pop-in" style={{animationDelay:'0.2s'}}>
+                            <h2 className="text-[2rem] font-black text-[#F9137C] leading-none mb-1">
+                                Atrapaste
+                            </h2>
+                            <div className="flex items-center justify-center gap-2">
+                                <img src={ASSETS.caja} alt="Caja" className="h-10 object-contain" />
+                                <span className="text-5xl font-black text-[#F9137C]">{score < 10 ? `0${score}` : score}</span>
+                            </div>
+                        </div>
+                        
+                        {/* Prize Image & Background Wheel */}
+                        <div className="relative w-full flex justify-center items-center my-6 min-h-[220px] max-h-[280px]">
+                            {/* Rueda giratoria con tinte magenta y opacity suave */}
+                            <img src={ASSETS.rueda} className="absolute w-[110%] max-w-[400px] spin-slow z-0 pop-in opacity-20" style={{animationDelay: '0.3s', filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)'}} alt="Fondo Animado" />
+                            
+                            {/* Prize Image o Caja triste si no ganó nada */}
+                            {displayPrize ? (
+                                <img src={displayPrize.image} className="relative h-[180px] object-contain drop-shadow-2xl pop-in z-10 bounce-in" style={{animationDelay: '0.4s'}} alt="Premio" />
                             ) : (
-                                <>
-                                    <p className="text-slate-600 mb-2 font-semibold">Aún no alcanzas un premio.</p>
-                                    <p className="text-sm text-slate-500">Mínimo necesario: {ASSETS.prizes[0].minBoxes} cajas.</p>
-                                </>
+                                <div className="relative z-10 text-6xl bounce-in" style={{animationDelay: '0.4s'}}>📦</div>
                             )}
                         </div>
 
-                        <div className="w-full flex flex-col gap-4 mt-auto pb-4 slide-up" style={{animationDelay:'0.3s'}}>
-                            {attemptsLeft > 0 ? (
-                                <>
-                                    {currentPrize && (
-                                        <Button variant="secondary" onClick={onClaim}>
-                                            Reclamar mi {currentPrize.name} ahora
-                                        </Button>
+                        {/* Title Ganaste / Mantienes */}
+                        <div className="pop-in mb-4" style={{animationDelay:'0.5s'}}>
+                            {displayPrize ? (
+                                <h3 className="text-[1.7rem] sm:text-3xl font-black text-[#0878A4] leading-[1.1] uppercase px-4">
+                                    {isMaintaining ? (
+                                        <>¡MANTIENES TU<br/>{displayPrize.name}!</>
+                                    ) : (
+                                        <>¡GANASTE {getArticle(displayPrize.name)}<br/>{displayPrize.name}!</>
                                     )}
-                                    <Button variant="primary" onClick={onRetry}>
-                                        Jugar de nuevo ({attemptsLeft} intentos)
-                                    </Button>
-                                    {bestPrize && bestScore > score && (
-                                        <p className="text-xs text-slate-500 mt-2">No te preocupes, mantienes tu mejor premio: <strong>{bestPrize.name}</strong></p>
-                                    )}
-                                </>
+                                </h3>
                             ) : (
-                                <Button onClick={onClaim}>
-                                    Continuar
-                                </Button>
+                                <h3 className="text-[1.7rem] sm:text-3xl font-black text-[#0878A4] leading-[1.1] uppercase px-4">
+                                    ¡SIGUE<br/>INTENTANDO!
+                                </h3>
                             )}
                         </div>
+                    </div>
+
+                    {/* Botones */}
+                    <div className="w-full flex flex-col gap-4 mt-auto pb-4 shrink-0 pop-in" style={{animationDelay:'0.6s'}}>
+                        {attemptsLeft > 0 ? (
+                            <>
+                                {/* Jugar (Izquierda) */}
+                                <div className="flex items-center justify-center gap-3 w-full max-w-[340px] mx-auto">
+                                    <div className="text-[#0878A4] animate-bounce-left shrink-0">
+                                        <svg width="20" height="32" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M24 0L0 20L24 40V0Z" />
+                                        </svg>
+                                    </div>
+                                    <Button onClick={onRetry} className="!w-full !bg-[#0878A4] hover:!bg-[#065b7c] flex-1 px-2 uppercase text-xl sm:text-2xl leading-none tracking-wider py-4 rounded-2xl font-black shadow-lg">
+                                        JUGAR ({attemptsLeft} INTENTOS)
+                                    </Button>
+                                    <div className="w-[20px] shrink-0"></div> {/* Spacer balance */}
+                                </div>
+                                
+                                {/* Reclamar (Derecha) */}
+                                {displayPrize && (
+                                    <div className="flex items-center justify-center gap-3 w-full max-w-[340px] mx-auto">
+                                        <div className="w-[20px] shrink-0"></div> {/* Spacer balance */}
+                                        <Button onClick={onClaim} className="!w-full flex-1 px-2 uppercase text-xl sm:text-2xl leading-none tracking-wider py-4 rounded-2xl font-black shadow-lg">
+                                            RECLAMAR MI PREMIO
+                                        </Button>
+                                        <div className="text-[#F9137C] animate-bounce-right shrink-0">
+                                            <svg width="20" height="32" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M0 0L24 20L0 40V0Z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div className="flex items-center justify-center gap-3 w-full max-w-[340px] mx-auto">
+                                <Button onClick={onClaim} className="!w-full px-10 uppercase text-3xl leading-none tracking-wider py-4 rounded-2xl font-black">
+                                    CONTINUAR
+                                </Button>
+                                <div className="text-[#F9137C] animate-bounce-right shrink-0">
+                                    <svg width="20" height="32" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M0 0L24 20L0 40V0Z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Logo Clasem Bottom */}
+                    <div className="w-full flex justify-center pb-6 pt-2 pop-in shrink-0" style={{animationDelay: '0.7s'}}>
+                        <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-8 object-contain" />
                     </div>
                 </div>
             );
@@ -1073,32 +1193,16 @@
                 
                 // Si alcanzó el premio máximo (Tier 3), terminamos automáticamente
                 if (achievedPrize && achievedPrize.id === 'tier3') {
-                    // Esperar un segundito para que el estado se actualice bien antes de ir a Winner (usamos timeout para dar fluidez)
+                    // Esperar un segundito para que el estado se actualice bien antes de ir a Winner
                     setTimeout(() => {
                         const code = generateCode();
                         setUniqueCode(code);
                         DBService.savePlayerResult({
                             playerName: userData.name,
                             playerDni: userData.dni,
-                            bestScore: Math.max(...newAttempts), // Recalcular localmente para seguridad
+                            bestScore: Math.max(...newAttempts),
                             prizeWon: 'Refrigeradora',
                             uniqueCode: code,
-                            attempts: newAttempts
-                        }).then(() => setView('WINNER'));
-                    }, 500);
-                } else if (newAttempts.length >= MAX_ATTEMPTS) {
-                    // Se acabaron los intentos
-                    setTimeout(() => {
-                        const finalBest = Math.max(...newAttempts);
-                        const finalP = getPrizeForScore(finalBest);
-                        const code = generateCode();
-                        setUniqueCode(code);
-                        DBService.savePlayerResult({
-                            playerName: userData.name,
-                            playerDni: userData.dni,
-                            bestScore: finalBest,
-                            prizeWon: finalP ? finalP.name : 'Ninguno',
-                            uniqueCode: finalP ? code : 'N/A',
                             attempts: newAttempts
                         }).then(() => setView('WINNER'));
                     }, 500);
@@ -1142,6 +1246,7 @@
                             score={attempts[attempts.length - 1]}
                             bestScore={bestScore}
                             attemptCount={attempts.length}
+                            attemptsArr={attempts}
                             onRetry={() => setView('TRANSITION')}
                             onClaim={finalizeGame}
                         />
