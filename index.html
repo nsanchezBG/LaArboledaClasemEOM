@@ -120,12 +120,14 @@
             logoClasem: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/logoclasem.png?raw=true',
             logoArboleda: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/logoarboleda.png?raw=true',
             rueda: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/rueda.png?raw=true',
+            rueda2: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/rueda2.png?raw=true',
             bodegon: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/bodegon.png?raw=true',
             dedoarriba: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/dedoarriba.webp?raw=true',
             caja: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/caja.webp?raw=true',
             foco: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/foco.webp?raw=true',
             fondo: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/fondo.png?raw=true',
             timer: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/timer.png?raw=true',
+            camara: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/camara.webp?raw=true',
             beep: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/beep.mp3?raw=true',
             prizes: [
                 { id: 'tier1', name: 'Microondas', minBoxes: 15, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/microondas.png?raw=true' },
@@ -1097,48 +1099,69 @@
 
         const WinnerView = ({ userData, bestScore, uniqueCode }) => {
             const finalPrize = getPrizeForScore(bestScore);
+            
+            const getArticle = (name) => {
+                const n = name.toLowerCase();
+                return n.includes('lavadora') || n.includes('refrigeradora') ? 'UNA' : 'UN';
+            };
 
             return (
-                <div className="flex flex-col items-center h-full p-8 fade-enter text-center bg-gradient-to-b from-[#0878A4] to-[#044059] text-white overflow-y-auto">
-                    <div className="w-full flex justify-between items-center mb-6 shrink-0 pt-4">
-                        <div className="bg-white px-3 py-1.5 rounded-xl">
-                            <img src={ASSETS.logoClasem} alt="Clasem" className="h-5 object-contain" />
-                        </div>
-                        <img src={ASSETS.logoArboleda} className="h-6 object-contain" alt="Logo" />
+                <div className="flex flex-col items-center justify-between h-full p-6 fade-enter text-center bg-[#F9137C] relative overflow-y-auto">
+                    
+                    {/* Logo Arboleda Top (Blanco) */}
+                    <div className="w-full flex justify-center pt-8 pop-in shrink-0" style={{animationDelay: '0.1s'}}>
+                        <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-16 object-contain drop-shadow-sm" style={{ filter: 'brightness(0) invert(1)' }} />
                     </div>
                     
                     {finalPrize ? (
                         <>
-                            <div className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-2">¡Felicidades!</div>
-                            <h2 className="text-3xl font-extrabold mb-6">Eres el ganador de:</h2>
-                            
-                            <div className="relative w-full aspect-square max-w-xs mx-auto bounce-in">
-                                <div className="absolute inset-0 bg-white/20 rounded-full blur-3xl"></div>
-                                <img src={finalPrize.image} className="w-full h-full object-contain relative z-10 drop-shadow-2xl" alt={finalPrize.name} />
+                            {/* Textos Principales */}
+                            <div className="mt-4 pop-in shrink-0" style={{animationDelay: '0.2s'}}>
+                                <h1 className="text-[2.6rem] font-black text-white leading-none uppercase tracking-tight">
+                                    ¡FELICIDADES!
+                                </h1>
+                                <h2 className="text-[1.3rem] font-bold text-white mt-1 uppercase leading-tight">
+                                    Te llevas {getArticle(finalPrize.name)}<br/>{finalPrize.name}
+                                </h2>
                             </div>
                             
-                            <h3 className="text-4xl font-black text-[#F9137C] mt-2 mb-8 drop-shadow-md">{finalPrize.name}</h3>
-                            
-                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 w-full border border-white/20">
-                                <p className="text-sm text-blue-100 mb-1">CÓDIGO DE GANADOR</p>
-                                <div className="text-3xl font-mono font-bold tracking-wider bg-white text-[#F9137C] py-2 rounded-lg my-2 select-all">
-                                    {uniqueCode}
-                                </div>
-                                <p className="text-xs text-blue-100 mt-3 px-2">
-                                    Tómale un screenshot a esta pantalla y preséntalo a tu asesor al separar tu depa.
+                            {/* Prize Image & Rueda Blanca */}
+                            <div className="relative w-full flex-1 flex justify-center items-center min-h-[160px] max-h-[220px] my-2">
+                                <img src={ASSETS.rueda2} className="absolute w-[120%] max-w-[400px] spin-slow z-0 pop-in opacity-90" style={{animationDelay: '0.3s'}} alt="Destello Blanco" />
+                                <img src={finalPrize.image} className="relative h-[130px] sm:h-[160px] object-contain drop-shadow-2xl pop-in z-10 bounce-in" style={{animationDelay: '0.4s'}} alt="Premio Ganado" />
+                            </div>
+
+                            {/* Cámara e Instrucciones */}
+                            <div className="flex flex-col items-center pop-in shrink-0 z-20" style={{animationDelay: '0.5s'}}>
+                                <img src={ASSETS.camara} alt="Cámara" className="h-9 mb-2 drop-shadow-md" />
+                                <p className="text-white text-[13px] sm:text-sm font-bold leading-tight px-6 max-w-xs">
+                                    Tómale una captura a esta pantalla y preséntasela a tu asesor al separar tu depa.
                                 </p>
+                            </div>
+                            
+                            {/* Bloque Código de Ganador */}
+                            <div className="w-full flex flex-col items-center mt-3 mb-2 pop-in shrink-0 z-20" style={{animationDelay: '0.6s'}}>
+                                <p className="text-white text-lg font-medium mb-1">
+                                    Código de ganador:
+                                </p>
+                                <div className="bg-white rounded-[1.5rem] p-4 w-[90%] max-w-[320px] shadow-2xl flex flex-col items-center justify-center">
+                                    <h2 className="text-4xl font-black text-[#1e293b] leading-none mb-1 tracking-widest">{uniqueCode}</h2>
+                                    <p className="text-[#1e293b] font-semibold text-sm sm:text-base leading-tight mt-1">{userData.name}</p>
+                                    <p className="text-[#1e293b] font-semibold text-sm sm:text-base leading-tight">DNI/CE: {userData.dni}</p>
+                                </div>
                             </div>
                         </>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center">
-                            <div className="text-6xl mb-6 opacity-80">😢</div>
-                            <h2 className="text-3xl font-extrabold mb-4">¡Gracias por jugar!</h2>
-                            <p className="text-blue-100 px-4">Esta vez no lograste alcanzar el puntaje mínimo, pero tenemos grandes descuentos esperándote en caseta de ventas.</p>
+                            <div className="text-6xl mb-6 opacity-80 pop-in">😢</div>
+                            <h2 className="text-3xl font-extrabold mb-4 text-white pop-in" style={{animationDelay: '0.2s'}}>¡Gracias por jugar!</h2>
+                            <p className="text-pink-100 px-4 pop-in" style={{animationDelay: '0.3s'}}>Esta vez no lograste alcanzar el puntaje mínimo, pero tenemos grandes descuentos esperándote en caseta de ventas.</p>
                         </div>
                     )}
-                    
-                    <div className="text-xs text-white/50 mt-10 mb-4 font-mono">
-                        {userData.name} | DNI: {userData.dni}
+
+                    {/* Logo Clasem Bottom (Blanco) */}
+                    <div className="w-full flex justify-center pb-6 pt-2 pop-in shrink-0" style={{animationDelay: '0.7s'}}>
+                        <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-8 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
                     </div>
                 </div>
             );
