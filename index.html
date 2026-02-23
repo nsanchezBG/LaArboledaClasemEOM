@@ -63,6 +63,21 @@
         }
         .animate-bounce-down { animation: bounceDown 1.5s ease-in-out infinite; }
 
+        /* Nueva Animación para la flecha hacia la derecha */
+        @keyframes bounceRight {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(8px); }
+        }
+        .animate-bounce-right { animation: bounceRight 1.5s ease-in-out infinite; }
+
+        /* Nueva Animación de Error/Sacudida */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+
         @keyframes truckSlide {
             0%, 100% { transform: translateX(-60px); }
             50% { transform: translateX(60px); }
@@ -99,6 +114,7 @@
             logoArboleda: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/logoarboleda.png?raw=true',
             rueda: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/rueda.png?raw=true',
             bodegon: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/bodegon.png?raw=true',
+            dedoarriba: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/dedoarriba.webp?raw=true',
             prizes: [
                 { id: 'tier1', name: 'Microondas', minBoxes: 15, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/microondas.png?raw=true' },
                 { id: 'tier2', name: 'Lavadora', minBoxes: 25, image: 'https://github.com/nsanchezBG/LaArboledaClasemEOM/blob/main/lavadora.png?raw=true' },
@@ -192,10 +208,10 @@
             const variants = {
                 primary: "bg-brand text-white hover:bg-pink-700",
                 secondary: "bg-white text-accent border-2 border-[#F9137C] hover:bg-pink-50",
-                disabled: "bg-gray-300 text-gray-500 cursor-not-allowed"
+                disabled: "bg-[#F9137C] opacity-50 text-white cursor-not-allowed shadow-none"
             };
             return (
-                <button onClick={onClick} className={`${baseClass} ${variants[variant]} ${className}`} disabled={variant === 'disabled'}>
+                <button onClick={onClick} className={`${baseClass} ${variants[variant]} ${className}`}>
                     {children}
                 </button>
             );
@@ -609,56 +625,110 @@
             const [dni, setDni] = useState('');
             const [terms, setTerms] = useState(false);
             const [showTermsModal, setShowTermsModal] = useState(false);
+            const [highlightTerms, setHighlightTerms] = useState(false);
+            const [highlightName, setHighlightName] = useState(false);
+            const [highlightDni, setHighlightDni] = useState(false);
 
-            const isValid = name.trim().length > 3 && dni.length >= 8 && terms;
+            // Validación: Nombre > 3 caracteres, DNI > 0, Términos aceptados
+            const isNameValid = name.trim().length > 3;
+            const isDniValid = dni.length > 0;
+            const isValid = isNameValid && isDniValid && terms;
 
             const handleSubmit = (e) => {
-                e.preventDefault();
-                if(isValid) onNext({ name, dni });
+                if(e) e.preventDefault();
+                if(isValid) {
+                    onNext({ name, dni });
+                } else {
+                    // Activar animación en campos inválidos
+                    if (!isNameValid) {
+                        setHighlightName(true);
+                        setTimeout(() => setHighlightName(false), 600);
+                    }
+                    if (!isDniValid) {
+                        setHighlightDni(true);
+                        setTimeout(() => setHighlightDni(false), 600);
+                    }
+                    if (!terms) {
+                        setHighlightTerms(true);
+                        setTimeout(() => setHighlightTerms(false), 600);
+                    }
+                }
             };
 
             return (
-                <div className="flex flex-col h-full p-8 fade-enter relative">
-                    <TopBrandBar />
-                    <h2 className="text-3xl font-bold text-slate-800 mb-6 mt-2">Regístrate para jugar</h2>
+                <div className="flex flex-col items-center justify-between h-full p-6 fade-enter text-center bg-white relative">
                     
-                    <form className="flex-1 flex flex-col gap-5" onSubmit={handleSubmit}>
+                    {/* Logo Arboleda Top */}
+                    <div className="w-full flex justify-center pt-8 pop-in" style={{animationDelay: '0.1s'}}>
+                        <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-[4.5rem] object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
+                    </div>
+                    
+                    {/* Icono e Instrucción */}
+                    <div className="flex flex-col items-center mt-2 pop-in" style={{animationDelay: '0.2s'}}>
+                        <img src={ASSETS.dedoarriba} alt="Thumbs Up" className="h-10 mb-2 drop-shadow-md" />
+                        <h2 className="text-[1.7rem] leading-[1.1] font-black text-[#0878A4]">
+                            Primero, registremos<br/>tus datos:
+                        </h2>
+                    </div>
+                    
+                    <form className="w-full max-w-sm flex-1 flex flex-col justify-center gap-5 my-4 pop-in" style={{animationDelay: '0.3s'}} onSubmit={handleSubmit}>
+                        {/* Campo Nombre */}
                         <div>
-                            <label className="block text-sm font-semibold text-slate-600 mb-1">Nombre Completo</label>
+                            <label className="block text-lg font-black text-[#0878A4] mb-1">Nombre completo:</label>
                             <input 
                                 type="text" 
                                 required
                                 value={name} onChange={e => setName(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0878A4] focus:ring-2 focus:ring-[#0878A4] focus:outline-none bg-white/70 backdrop-blur-sm"
-                                placeholder="Ej. Juan Pérez"
+                                className={`w-full px-4 py-3 rounded-2xl border-2 text-center text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0878A4]/50 placeholder:text-slate-400 font-semibold transition-colors ${highlightName ? 'animate-shake border-[#F9137C] bg-pink-50' : 'border-[#0878A4]'}`}
+                                placeholder="Ej: Juan Pérez Calderón"
                             />
                         </div>
+
+                        {/* Campo DNI/CE */}
                         <div>
-                            <label className="block text-sm font-semibold text-slate-600 mb-1">DNI</label>
+                            <label className="block text-lg font-black text-[#0878A4] mb-1">DNI/CE:</label>
                             <input 
-                                type="tel" 
-                                required maxLength={8}
-                                value={dni} onChange={e => setDni(e.target.value.replace(/[^0-9]/g, ''))}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0878A4] focus:ring-2 focus:ring-[#0878A4] focus:outline-none bg-white/70 backdrop-blur-sm"
-                                placeholder="8 dígitos"
+                                type="text" 
+                                required maxLength={16}
+                                value={dni} onChange={e => setDni(e.target.value.replace(/[^0-9a-zA-Z]/g, ''))}
+                                className={`w-full px-4 py-3 rounded-2xl border-2 text-center text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0878A4]/50 placeholder:text-slate-400 font-semibold transition-colors ${highlightDni ? 'animate-shake border-[#F9137C] bg-pink-50' : 'border-[#0878A4]'}`}
+                                placeholder="Ej: 07689324"
                             />
                         </div>
                         
-                        <div className="flex items-start gap-3 mt-2">
-                            <input 
-                                type="checkbox" id="terms" 
-                                checked={terms} onChange={e => setTerms(e.target.checked)}
-                                className="mt-1 w-5 h-5 accent-[#F9137C]"
-                            />
-                            <label htmlFor="terms" className="text-sm text-slate-600 leading-tight">
-                                Acepto los <button type="button" onClick={(e) => {e.preventDefault(); setShowTermsModal(true);}} className="text-[#0878A4] underline font-semibold">Términos y Condiciones</button> de la campaña.
+                        {/* Checkbox Términos */}
+                        <div className={`flex items-center justify-center gap-3 mt-2 p-2 rounded-xl transition-colors ${highlightTerms ? 'animate-shake bg-pink-50' : ''}`}>
+                            <button 
+                                type="button" 
+                                onClick={() => setTerms(!terms)}
+                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${terms ? 'bg-[#0878A4] border-[#0878A4]' : (highlightTerms ? 'border-[#F9137C]' : 'border-[#0878A4] bg-transparent')}`}
+                            >
+                                {terms && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
+                            </button>
+                            <label className={`text-[11px] font-semibold leading-tight text-left cursor-pointer transition-colors ${highlightTerms ? 'text-[#F9137C]' : 'text-[#0878A4]'}`} onClick={() => setTerms(!terms)}>
+                                Acepto los <span onClick={(e) => {e.stopPropagation(); setShowTermsModal(true);}} className="underline font-bold cursor-pointer hover:text-[#065b7c]">Términos y Condiciones</span> de la campaña.
                             </label>
                         </div>
                         
-                        <div className="mt-auto pb-8">
-                            <Button variant={isValid ? 'primary' : 'disabled'} onClick={handleSubmit}>Siguiente</Button>
+                        {/* Botón y Flecha */}
+                        <div className="flex items-center justify-center gap-4 mt-4">
+                            <Button variant={isValid ? 'primary' : 'disabled'} onClick={handleSubmit} className="!w-auto px-10 uppercase text-[250%] leading-none tracking-wider py-3 rounded-2xl font-black">
+                                LISTO
+                            </Button>
+                            
+                            {/* Flecha Derecha */}
+                            <div className={`text-[#F9137C] ${isValid ? 'animate-bounce-right' : 'opacity-50'}`}>
+                                <svg width="24" height="40" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M0 0L24 20L0 40V0Z" />
+                                </svg>
+                            </div>
                         </div>
                     </form>
+
+                    {/* Logo Clasem Bottom */}
+                    <div className="w-full flex justify-center pb-6 pop-in shrink-0" style={{animationDelay: '0.4s'}}>
+                        <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-8 object-contain" />
+                    </div>
 
                     {/* Modal Términos */}
                     {showTermsModal && (
