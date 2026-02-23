@@ -138,6 +138,13 @@
 
         const MAX_ATTEMPTS = 5;
         const GAME_DURATION = 30; // Segundos
+        
+        // --- CONFIGURACIÓN DE DIFICULTAD ---
+        // Segundos entre cada caja. 
+        // Aumenta este número para que caigan MENOS cajas (más difícil).
+        // Disminuye este número para que caigan MÁS cajas (más fácil).
+        // (En 0.8, caerán un máximo de ~37 cajas en toda la partida de 30 segs)
+        const BOX_SPAWN_INTERVAL = 0.8; 
 
         // --- SISTEMA DE BASE DE DATOS (MOCK / FIREBASE) ---
         // Preparado para Looker Studio con estructura plana
@@ -545,7 +552,7 @@
                             size: 45,
                             speed: 150 + Math.random() * 100 // velocidad variable
                         });
-                        boxSpawnTimer = 0.7;
+                        boxSpawnTimer = BOX_SPAWN_INTERVAL;
                     }
 
                     // Actualizar estado de inflado del camión
