@@ -372,7 +372,6 @@
 
                 const resize = () => {
                     // Obligamos a que la resolución interna sea 1:1 (cuadrada)
-                    // basándonos en el ancho real para evitar elementos estirados
                     const size = canvas.parentElement.clientWidth || 280;
                     canvas.width = size;
                     canvas.height = size;
@@ -468,7 +467,6 @@
             const beepAudio = useMemo(() => new Audio(ASSETS.beep), []);
 
             useEffect(() => {
-                // Forzamos la carga del audio
                 beepAudio.load();
             }, [beepAudio]);
 
@@ -478,7 +476,6 @@
                 let animationId;
                 let lastTime = Date.now();
                 
-                // Ajustar tamaño
                 const resize = () => {
                     canvas.width = canvas.parentElement.clientWidth;
                     canvas.height = canvas.parentElement.clientHeight;
@@ -486,12 +483,10 @@
                 resize();
                 window.addEventListener('resize', resize);
 
-                // Estado del juego
                 let gameTime = GAME_DURATION;
                 let boxesCaught = 0;
                 let isFinished = false;
                 
-                // Camión más grande (130x78 en lugar de 100x60)
                 const truck = {
                     width: 130,
                     height: 78,
@@ -505,12 +500,10 @@
                 let truckInflate = 0;
                 let particles = [];
 
-                // Controles (Touch y Mouse)
                 const handleMove = (e) => {
                     let clientX = e.touches ? e.touches[0].clientX : e.clientX;
                     const rect = canvas.getBoundingClientRect();
                     let targetX = clientX - rect.left - truck.width / 2;
-                    // Limites
                     if (targetX < 0) targetX = 0;
                     if (targetX > canvas.width - truck.width) targetX = canvas.width - truck.width;
                     truck.x = targetX;
@@ -519,7 +512,6 @@
                 canvas.addEventListener('touchmove', handleMove, { passive: true });
                 canvas.addEventListener('mousemove', handleMove);
 
-                // Bucle principal
                 const gameLoop = () => {
                     if (isFinished) return;
 
@@ -527,7 +519,6 @@
                     const dt = (now - lastTime) / 1000;
                     lastTime = now;
 
-                    // Actualizar tiempo
                     gameTime -= dt;
                     if (gameTime <= 0) {
                         isFinished = true;
@@ -536,46 +527,39 @@
                         setTimeout(() => {
                             onGameOver(boxesCaught);
                         }, 2000);
-                        return; // Fin del juego pausado
+                        return;
                     }
                     setTimeLeft(Math.ceil(gameTime));
 
-                    // Limpiar canvas
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    // Spawn Cajas
                     boxSpawnTimer -= dt;
                     if (boxSpawnTimer <= 0) {
                         boxes.push({
                             x: Math.random() * (canvas.width - 50),
                             y: -50,
                             size: 45,
-                            speed: 150 + Math.random() * 100 // velocidad variable
+                            speed: 150 + Math.random() * 100
                         });
                         boxSpawnTimer = BOX_SPAWN_INTERVAL;
                     }
 
-                    // Actualizar estado de inflado del camión
                     truckInflate = Math.max(0, truckInflate - dt * 6);
 
-                    // Actualizar y dibujar cajas
                     for (let i = boxes.length - 1; i >= 0; i--) {
                         let b = boxes[i];
                         b.y += b.speed * dt;
                         
-                        // Colisión (AABB simple)
                         if (
                             b.y + b.size > truck.y &&
                             b.y < truck.y + truck.height &&
                             b.x + b.size > truck.x &&
                             b.x < truck.x + truck.width
                         ) {
-                            // Atrapada!
                             boxesCaught++;
                             setScore(boxesCaught);
                             boxes.splice(i, 1);
 
-                            // Efectos visuales: Inflar camión y emitir partículas
                             truckInflate = 1;
                             for(let p = 0; p < 8; p++) {
                                 particles.push({
@@ -587,21 +571,18 @@
                                 });
                             }
 
-                            // Disparar audio (reproducción superpuesta)
                             beepAudio.currentTime = 0;
                             beepAudio.play().catch(e => console.log('Audio autoplay prevented'));
 
-                            // Animar el número del score
                             if (scoreSpanRef.current) {
                                 scoreSpanRef.current.classList.remove('score-pop');
-                                void scoreSpanRef.current.offsetWidth; // Forzar reflow para reiniciar la animación CSS
+                                void scoreSpanRef.current.offsetWidth;
                                 scoreSpanRef.current.classList.add('score-pop');
                             }
                             
                             continue;
                         }
 
-                        // Fuera de pantalla
                         if (b.y > canvas.height) {
                             boxes.splice(i, 1);
                             continue;
@@ -610,12 +591,11 @@
                         drawBoxShape(ctx, b.x, b.y, b.size, boxImg);
                     }
 
-                    // Actualizar y dibujar partículas
                     for (let i = particles.length - 1; i >= 0; i--) {
                         let p = particles[i];
                         p.x += p.vx * dt;
                         p.y += p.vy * dt;
-                        p.vy += 800 * dt; // gravedad
+                        p.vy += 800 * dt; 
                         p.life -= dt * 1.5;
                         
                         if (p.life <= 0) {
@@ -628,6 +608,7 @@
                         }
                     }
 
+                    truck.y = canvas.height - truck.height - 20;
                     // Dibujar camión
                     // Actualizar Y por si cambió el resize
                     truck.y = canvas.height - truck.height - 20;
@@ -655,34 +636,27 @@
             return (
                 <div className="relative w-full h-full bg-cover bg-center overflow-hidden" style={{backgroundImage: `url(${ASSETS.fondo})`}}>
                     
-                    {/* Alerta Radial de 5 segundos */}
                     {timeLeft <= 5 && !showTimeUp && (
                         <div className="absolute inset-0 bg-[#F9137C] z-20 pointer-events-none animate-warning-pulse"></div>
                     )}
 
-                    {/* HUD (Encabezado) */}
                     <div className="absolute top-8 left-0 right-0 px-6 flex justify-between items-center z-30 pointer-events-none">
                         
-                        {/* Izquierda: Timer */}
                         <div className="flex items-center gap-2">
                             <img src={ASSETS.timer} className="h-10 object-contain drop-shadow-md" alt="Timer" />
                             <span className="font-black text-[2.5rem] text-[#0878A4] drop-shadow-sm leading-none mt-1.5">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
                         </div>
 
-                        {/* Centro: Logo (Filtro Magenta) */}
                         <img src={ASSETS.logoArboleda} className="h-12 object-contain drop-shadow-md" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} alt="Logo" />
                         
-                        {/* Derecha: Score */}
                         <div className="flex items-center gap-2">
                             <img src={ASSETS.caja} className="h-9 object-contain drop-shadow-md" alt="Caja" />
                             <span ref={scoreSpanRef} className="font-black text-[2.5rem] text-[#F9137C] drop-shadow-sm leading-none mt-1.5">{score < 10 ? `0${score}` : score}</span>
                         </div>
                     </div>
                     
-                    {/* Game Canvas */}
                     <canvas ref={canvasRef} className="absolute inset-0 w-full h-full cursor-none z-10"></canvas>
                     
-                    {/* Overlay: Tiempo Terminado */}
                     {showTimeUp && (
                         <div className="absolute inset-0 bg-[#F9137C] z-50 flex items-center justify-center fade-enter">
                             <h2 className="text-[4.5rem] font-black text-white uppercase tracking-wider bounce-in drop-shadow-xl">
@@ -694,56 +668,57 @@
             );
         };
 
-        // --- PANTALLAS (VIEWS) ---
+        // --- PANTALLAS (VIEWS) - SOLUCIÓN ZERO-SCROLL ---
+        // Uso estricto de overflow-hidden, flex-1, y unidades relativas (dvh, clamp) 
+        // para asegurar encaje perfecto en cualquier celular sin importar barras del navegador.
 
         const SplashView = ({ onNext }) => (
-            <div className="flex flex-col items-center justify-between h-full px-4 sm:px-6 fade-enter text-center bg-white relative overflow-y-auto" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
-                
-                {/* Logo Arboleda Top */}
-                <div className="w-full flex justify-center pop-in shrink-0" style={{animationDelay: '0.1s'}}>
-                    <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-16 sm:h-20 object-contain drop-shadow-sm" />
-                </div>
-                
-                {/* Titles */}
-                <div className="mt-2 pop-in shrink-0" style={{animationDelay: '0.2s'}}>
-                    <h1 className="text-3xl sm:text-4xl font-black text-[#0878A4] leading-[0.75] uppercase tracking-tight">
-                        ¡AMUEBLA TU<br/>NUEVO HOGAR!
-                    </h1>
-                </div>
-
-                {/* Bodegón Unificado con Rueda */}
-                <div className="relative w-full flex-1 flex justify-center items-center my-2 sm:my-4 min-h-[200px] sm:min-h-[260px] max-h-[350px]">
-                    {/* Rueda giratoria */}
-                    <img src={ASSETS.rueda} className="absolute w-[100%] max-w-[320px] sm:max-w-[380px] spin-slow z-0 pop-in opacity-80" style={{animationDelay: '0.3s'}} alt="Fondo Animado" />
+            <div className="h-full w-full overflow-hidden bg-white fade-enter relative">
+                <div className="flex flex-col items-center justify-between h-full w-full px-4 sm:px-6 py-[3dvh]" style={{ paddingBottom: 'max(2dvh, env(safe-area-inset-bottom))', paddingTop: 'max(2dvh, env(safe-area-inset-top))' }}>
                     
-                    {/* Bodegón */}
-                    <img src={ASSETS.bodegon} className="relative w-[95%] max-w-[300px] sm:max-w-[360px] object-contain drop-shadow-2xl pop-in z-10" style={{animationDelay: '0.4s'}} alt="Premios" />
-                </div>
-
-                {/* Text & CTA */}
-                <div className="w-full flex flex-col items-center pop-in z-20 shrink-0" style={{animationDelay: '0.5s'}}>
-                    <h2 className="text-[#F9137C] font-bold text-lg sm:text-xl leading-[0.75] mb-1">
-                        Juega y llévate un<br/>electrodoméstico
-                    </h2>
-                    <h1 className="text-[#F9137C] font-black text-[2.8rem] sm:text-[3.2rem] uppercase mt-0 mb-1 tracking-wide leading-[0.75]">
-                        GRATIS
-                    </h1>
+                    {/* Logo Arboleda Top */}
+                    <div className="w-full flex justify-center pop-in shrink-0 h-[7dvh] max-h-[70px]" style={{animationDelay: '0.1s'}}>
+                        <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-full object-contain drop-shadow-sm" />
+                    </div>
                     
-                    {/* Bouncing Arrow */}
-                    <div className="animate-bounce-down mb-2 sm:mb-4 mt-1 sm:mt-2 text-[#F9137C]">
-                        <svg width="40" height="24" viewBox="0 0 40 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="w-8 sm:w-10">
-                            <path d="M20 24L0 0H40L20 24Z" />
-                        </svg>
+                    {/* Titles */}
+                    <div className="pop-in shrink-0 mt-[1dvh]" style={{animationDelay: '0.2s'}}>
+                        <h1 className="text-[clamp(1.5rem,4dvh,2.5rem)] font-black text-[#0878A4] leading-[0.85] uppercase tracking-tight text-center">
+                            ¡AMUEBLA TU<br/>NUEVO HOGAR!
+                        </h1>
                     </div>
 
-                    <Button onClick={onNext} className="!py-3 sm:!py-4 uppercase text-[250%] sm:text-[300%] leading-none tracking-wider rounded-3xl w-[90%] max-w-sm mb-2 sm:mb-4 font-black">
-                        PARTICIPAR
-                    </Button>
-                </div>
+                    {/* Bodegón Unificado con Rueda */}
+                    <div className="relative w-full flex-1 flex flex-col justify-center items-center min-h-0 shrink my-[1dvh]">
+                        <img src={ASSETS.rueda} className="absolute h-[120%] max-h-[35dvh] spin-slow z-0 pop-in opacity-80 object-contain" style={{animationDelay: '0.3s'}} alt="Fondo Animado" />
+                        <img src={ASSETS.bodegon} className="relative h-full max-h-[30dvh] w-auto max-w-[95%] object-contain drop-shadow-2xl pop-in z-10" style={{animationDelay: '0.4s'}} alt="Premios" />
+                    </div>
 
-                {/* Logo Clasem Bottom */}
-                <div className="w-full flex justify-center pop-in shrink-0" style={{animationDelay: '0.6s'}}>
-                    <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-6 sm:h-8 object-contain" />
+                    {/* Text & CTA */}
+                    <div className="w-full flex flex-col items-center pop-in z-20 shrink-0" style={{animationDelay: '0.5s'}}>
+                        <h2 className="text-[#F9137C] font-bold text-[clamp(1rem,2dvh,1.5rem)] leading-[0.9] mb-[0.5dvh] text-center">
+                            Juega y llévate un<br/>electrodoméstico
+                        </h2>
+                        <h1 className="text-[#F9137C] font-black text-[clamp(2.5rem,6dvh,4rem)] uppercase mb-[1dvh] tracking-wide leading-[0.8]">
+                            GRATIS
+                        </h1>
+                        
+                        {/* Bouncing Arrow */}
+                        <div className="animate-bounce-down mb-[1.5dvh] text-[#F9137C] h-[3dvh] max-h-[30px]">
+                            <svg viewBox="0 0 40 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="h-full w-auto">
+                                <path d="M20 24L0 0H40L20 24Z" />
+                            </svg>
+                        </div>
+
+                        <Button onClick={onNext} className="!py-[1.5dvh] uppercase text-[clamp(1.8rem,4.5dvh,3rem)] leading-none tracking-wider rounded-[2dvh] w-[90%] max-w-sm font-black">
+                            PARTICIPAR
+                        </Button>
+                    </div>
+
+                    {/* Logo Clasem Bottom */}
+                    <div className="w-full flex justify-center pop-in shrink-0 mt-[2dvh] h-[3.5dvh] max-h-[35px]" style={{animationDelay: '0.6s'}}>
+                        <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-full object-contain" />
+                    </div>
                 </div>
             </div>
         );
@@ -757,7 +732,6 @@
             const [highlightName, setHighlightName] = useState(false);
             const [highlightDni, setHighlightDni] = useState(false);
 
-            // Validación: Nombre > 3 caracteres, DNI > 0, Términos aceptados
             const isNameValid = name.trim().length > 3;
             const isDniValid = dni.length > 0;
             const isValid = isNameValid && isDniValid && terms;
@@ -767,7 +741,6 @@
                 if(isValid) {
                     onNext({ name, dni });
                 } else {
-                    // Activar animación en campos inválidos
                     if (!isNameValid) {
                         setHighlightName(true);
                         setTimeout(() => setHighlightName(false), 600);
@@ -784,167 +757,162 @@
             };
 
             return (
-                <div className="flex flex-col items-center justify-between h-full px-4 sm:px-6 fade-enter text-center bg-white relative overflow-y-auto" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
-                    
-                    {/* Logo Arboleda Top */}
-                    <div className="w-full flex justify-center pop-in shrink-0" style={{animationDelay: '0.1s'}}>
-                        <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-12 sm:h-[4.5rem] object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
-                    </div>
-                    
-                    {/* Icono e Instrucción */}
-                    <div className="flex flex-col items-center mt-2 pop-in shrink-0" style={{animationDelay: '0.2s'}}>
-                        <img src={ASSETS.dedoarriba} alt="Thumbs Up" className="h-8 sm:h-10 mb-2 drop-shadow-md" />
-                        <h2 className="text-[1.4rem] sm:text-[1.7rem] leading-[1.1] font-black text-[#0878A4]">
-                            Primero, registremos<br/>tus datos:
-                        </h2>
-                    </div>
-                    
-                    <form className="w-full max-w-sm flex-1 flex flex-col justify-center gap-4 sm:gap-5 my-2 sm:my-4 pop-in shrink-0" style={{animationDelay: '0.3s'}} onSubmit={handleSubmit}>
-                        {/* Campo Nombre */}
-                        <div>
-                            <label className="block text-base sm:text-lg font-black text-[#0878A4] mb-1">Nombre completo:</label>
-                            <input 
-                                type="text" 
-                                required
-                                value={name} onChange={e => setName(e.target.value)}
-                                className={`w-full px-4 py-2 sm:py-3 rounded-2xl border-2 text-center text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0878A4]/50 placeholder:text-slate-400 font-semibold transition-colors ${highlightName ? 'animate-shake border-[#F9137C] bg-pink-50' : 'border-[#0878A4]'}`}
-                                placeholder="Ej: Juan Pérez Calderón"
-                            />
+                <div className="h-full w-full overflow-hidden bg-white fade-enter relative">
+                    <div className="flex flex-col items-center justify-between h-full w-full px-4 sm:px-6 py-[3dvh]" style={{ paddingBottom: 'max(2dvh, env(safe-area-inset-bottom))', paddingTop: 'max(2dvh, env(safe-area-inset-top))' }}>
+                        
+                        <div className="w-full flex justify-center pop-in shrink-0 h-[6dvh] max-h-[60px]" style={{animationDelay: '0.1s'}}>
+                            <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-full object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
                         </div>
+                        
+                        <div className="flex flex-col items-center pop-in shrink-0 mt-[2dvh]" style={{animationDelay: '0.2s'}}>
+                            <img src={ASSETS.dedoarriba} alt="Thumbs Up" className="h-[5dvh] max-h-[45px] mb-[1dvh] drop-shadow-md" />
+                            <h2 className="text-[clamp(1.2rem,3dvh,1.8rem)] leading-[1.1] font-black text-[#0878A4] text-center">
+                                Primero, registremos<br/>tus datos:
+                            </h2>
+                        </div>
+                        
+                        <form className="w-full max-w-sm flex-1 flex flex-col justify-center gap-[2dvh] pop-in shrink min-h-0 py-[1dvh]" style={{animationDelay: '0.3s'}} onSubmit={handleSubmit}>
+                            <div className="shrink-0">
+                                <label className="block text-[clamp(0.9rem,2dvh,1.2rem)] font-black text-[#0878A4] mb-[0.5dvh]">Nombre completo:</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={name} onChange={e => setName(e.target.value)}
+                                    className={`w-full px-4 py-[1.2dvh] rounded-[1.5dvh] border-2 text-center text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0878A4]/50 placeholder:text-slate-400 font-semibold transition-colors text-[clamp(0.9rem,2dvh,1.2rem)] ${highlightName ? 'animate-shake border-[#F9137C] bg-pink-50' : 'border-[#0878A4]'}`}
+                                    placeholder="Ej: Juan Pérez Calderón"
+                                />
+                            </div>
 
-                        {/* Campo DNI/CE */}
-                        <div>
-                            <label className="block text-base sm:text-lg font-black text-[#0878A4] mb-1">DNI/CE:</label>
-                            <input 
-                                type="text" 
-                                required maxLength={16}
-                                value={dni} onChange={e => setDni(e.target.value.replace(/[^0-9a-zA-Z]/g, ''))}
-                                className={`w-full px-4 py-2 sm:py-3 rounded-2xl border-2 text-center text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0878A4]/50 placeholder:text-slate-400 font-semibold transition-colors ${highlightDni ? 'animate-shake border-[#F9137C] bg-pink-50' : 'border-[#0878A4]'}`}
-                                placeholder="Ej: 07689324"
-                            />
-                        </div>
-                        
-                        {/* Checkbox Términos */}
-                        <div className={`flex items-center justify-center gap-3 mt-1 sm:mt-2 p-2 rounded-xl transition-colors ${highlightTerms ? 'animate-shake bg-pink-50' : ''}`}>
-                            <button 
-                                type="button" 
-                                onClick={() => setTerms(!terms)}
-                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${terms ? 'bg-[#0878A4] border-[#0878A4]' : (highlightTerms ? 'border-[#F9137C]' : 'border-[#0878A4] bg-transparent')}`}
-                            >
-                                {terms && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
-                            </button>
-                            <label className={`text-[11px] font-semibold leading-tight text-left cursor-pointer transition-colors ${highlightTerms ? 'text-[#F9137C]' : 'text-[#0878A4]'}`} onClick={() => setTerms(!terms)}>
-                                Acepto los <span onClick={(e) => {e.stopPropagation(); setShowTermsModal(true);}} className="underline font-bold cursor-pointer hover:text-[#065b7c]">Términos y Condiciones</span> de la campaña.
-                            </label>
-                        </div>
-                        
-                        {/* Botón y Flecha */}
-                        <div className="flex items-center justify-center gap-3 sm:gap-4 mt-2 sm:mt-4">
-                            <Button variant={isValid ? 'primary' : 'disabled'} onClick={handleSubmit} className="!w-auto px-8 sm:px-10 !py-2 sm:!py-3 uppercase text-[200%] sm:text-[250%] leading-none tracking-wider rounded-2xl font-black">
-                                LISTO
-                            </Button>
+                            <div className="shrink-0">
+                                <label className="block text-[clamp(0.9rem,2dvh,1.2rem)] font-black text-[#0878A4] mb-[0.5dvh]">DNI/CE:</label>
+                                <input 
+                                    type="text" 
+                                    required maxLength={16}
+                                    value={dni} onChange={e => setDni(e.target.value.replace(/[^0-9a-zA-Z]/g, ''))}
+                                    className={`w-full px-4 py-[1.2dvh] rounded-[1.5dvh] border-2 text-center text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0878A4]/50 placeholder:text-slate-400 font-semibold transition-colors text-[clamp(0.9rem,2dvh,1.2rem)] ${highlightDni ? 'animate-shake border-[#F9137C] bg-pink-50' : 'border-[#0878A4]'}`}
+                                    placeholder="Ej: 07689324"
+                                />
+                            </div>
                             
-                            {/* Flecha Derecha */}
-                            <div className={`text-[#F9137C] ${isValid ? 'animate-bounce-right' : 'opacity-50'}`}>
-                                <svg width="24" height="40" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="w-5 sm:w-6 h-8 sm:h-10">
-                                    <path d="M0 0L24 20L0 40V0Z" />
-                                </svg>
+                            <div className={`flex items-center justify-center gap-2 p-[0.5dvh] rounded-xl transition-colors shrink-0 ${highlightTerms ? 'animate-shake bg-pink-50' : ''}`}>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setTerms(!terms)}
+                                    className={`w-[3dvh] h-[3dvh] max-w-[24px] max-h-[24px] rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${terms ? 'bg-[#0878A4] border-[#0878A4]' : (highlightTerms ? 'border-[#F9137C]' : 'border-[#0878A4] bg-transparent')}`}
+                                >
+                                    {terms && <div className="w-1/2 h-1/2 rounded-full bg-white"></div>}
+                                </button>
+                                <label className={`text-[clamp(0.6rem,1.5dvh,0.8rem)] font-semibold leading-tight text-left cursor-pointer transition-colors ${highlightTerms ? 'text-[#F9137C]' : 'text-[#0878A4]'}`} onClick={() => setTerms(!terms)}>
+                                    Acepto los <span onClick={(e) => {e.stopPropagation(); setShowTermsModal(true);}} className="underline font-bold cursor-pointer hover:text-[#065b7c]">Términos y Condiciones</span> de la campaña.
+                                </label>
                             </div>
-                        </div>
-                    </form>
-
-                    {/* Logo Clasem Bottom */}
-                    <div className="w-full flex justify-center pt-2 pop-in shrink-0" style={{animationDelay: '0.4s'}}>
-                        <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-6 sm:h-8 object-contain" />
-                    </div>
-
-                    {/* Modal Términos */}
-                    {showTermsModal && (
-                        <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4 fade-enter">
-                            <div className="bg-white rounded-2xl p-6 w-full max-h-[80%] overflow-y-auto shadow-2xl">
-                                <h3 className="text-xl font-bold mb-4">Términos y Condiciones</h3>
-                                <div className="text-sm text-slate-600 space-y-3 mb-6 text-left">
-                                    <p>1. Promoción válida para clientes registrados de CLASEM Inmobiliaria.</p>
-                                    <p>2. Cada usuario tiene un máximo de 5 intentos para alcanzar el puntaje necesario.</p>
-                                    <p>3. Los premios no son acumulables. Solo se entregará el premio correspondiente al nivel (Tier) más alto alcanzado y guardado por el usuario.</p>
-                                    <p>4. El código generado al final debe ser validado por un asesor de ventas para hacer efectivo el premio durante la separación de su departamento en "La Arboleda".</p>
+                            
+                            <div className="flex items-center justify-center gap-[1.5dvh] mt-[1dvh] shrink-0">
+                                <Button variant={isValid ? 'primary' : 'disabled'} onClick={handleSubmit} className="!w-auto px-[4dvh] !py-[1.2dvh] uppercase text-[clamp(1.5rem,3.5dvh,2.5rem)] leading-none tracking-wider rounded-[1.5dvh] font-black">
+                                    LISTO
+                                </Button>
+                                
+                                <div className={`text-[#F9137C] h-[4dvh] max-h-[35px] ${isValid ? 'animate-bounce-right' : 'opacity-50'}`}>
+                                    <svg viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="h-full w-auto">
+                                        <path d="M0 0L24 20L0 40V0Z" />
+                                    </svg>
                                 </div>
-                                <Button onClick={() => setShowTermsModal(false)} className="!py-3">Cerrar</Button>
                             </div>
+                        </form>
+
+                        <div className="w-full flex justify-center pop-in shrink-0 h-[3.5dvh] max-h-[35px]" style={{animationDelay: '0.4s'}}>
+                            <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-full object-contain" />
                         </div>
-                    )}
+
+                        {showTermsModal && (
+                            <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4 fade-enter">
+                                <div className="bg-white rounded-[2dvh] p-[3dvh] w-full max-h-[80dvh] overflow-y-auto shadow-2xl">
+                                    <h3 className="text-[clamp(1rem,2.5dvh,1.5rem)] font-bold mb-[2dvh]">Términos y Condiciones</h3>
+                                    <div className="text-[clamp(0.8rem,1.8dvh,1rem)] text-slate-600 space-y-[1dvh] mb-[3dvh] text-left">
+                                        <p>1. Promoción válida para clientes registrados de CLASEM Inmobiliaria.</p>
+                                        <p>2. Cada usuario tiene un máximo de 5 intentos para alcanzar el puntaje necesario.</p>
+                                        <p>3. Los premios no son acumulables. Solo se entregará el premio correspondiente al nivel (Tier) más alto alcanzado y guardado por el usuario.</p>
+                                        <p>4. El código generado al final debe ser validado por un asesor de ventas para hacer efectivo el premio durante la separación de su departamento en "La Arboleda".</p>
+                                    </div>
+                                    <Button onClick={() => setShowTermsModal(false)} className="!py-[1.5dvh]">Cerrar</Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         };
 
         const TutorialView = ({ onNext }) => (
-            <div className="flex flex-col items-center justify-between h-full px-4 sm:px-6 fade-enter text-center bg-white relative overflow-y-auto" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
-                
-                {/* Logo Arboleda Top */}
-                <div className="w-full flex justify-center pop-in shrink-0" style={{animationDelay: '0.1s'}}>
-                    <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-12 sm:h-[4.5rem] object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
-                </div>
-                
-                {/* Icono e Instrucción */}
-                <div className="flex flex-col items-center mt-1 sm:mt-2 pop-in shrink-0" style={{animationDelay: '0.2s'}}>
-                    <img src={ASSETS.foco} alt="Foco" className="h-8 sm:h-10 mb-1 drop-shadow-md" />
-                    <h2 className="text-[1.5rem] sm:text-[2rem] leading-[1.1] font-black text-[#0878A4]">
-                        ¿Cómo ganas?
-                    </h2>
-                </div>
-                
-                {/* Animación del juego (Reducida sutilmente para acomodar pantallas pequeñas) */}
-                <div className="w-full max-w-[200px] sm:max-w-[280px] aspect-square bg-[#f1f5f9] rounded-[1.5rem] sm:rounded-[2rem] relative overflow-hidden my-2 sm:my-3 shadow-inner shrink-0 pop-in" style={{animationDelay: '0.3s'}}>
-                    <MiniGamePreview />
-                </div>
-                
-                {/* Textos */}
-                <div className="w-full max-w-sm flex flex-col items-center gap-1 pop-in shrink-0" style={{animationDelay: '0.4s'}}>
-                    <p className="text-[#F9137C] text-[12px] sm:text-sm font-medium leading-tight px-4">
-                        Mueve el camión de mudanza y<br/>atrapa todas las cajas que puedas<br/>en <strong className="font-black">30 segundos.</strong>
-                    </p>
-                    <p className="text-[#0878A4] text-[12px] sm:text-sm font-medium leading-tight mt-1">
-                        ¡Tienes <strong className="font-black">5 intentos</strong> para lograr tu mejor puntaje!
-                    </p>
-                </div>
-
-                {/* Premios Horizontales */}
-                <div className="flex justify-center items-end gap-4 sm:gap-6 w-full my-2 sm:my-4 shrink-0 pop-in" style={{animationDelay: '0.5s'}}>
-                    {ASSETS.prizes.map((prize, idx) => {
-                        const heights = ['h-8 sm:h-10', 'h-12 sm:h-16', 'h-16 sm:h-[5.5rem]']; // Escala adaptable: Micro, Lavadora, Refri
-                        return (
-                            <div key={prize.id} className="flex flex-col items-center">
-                                <img 
-                                    src={prize.image} 
-                                    className={`${heights[idx]} object-contain mb-1 drop-shadow-md`} 
-                                    alt={prize.name} 
-                                />
-                                <div className="flex items-center gap-1">
-                                    <span className="text-[#F9137C] font-black text-lg sm:text-xl leading-none">{prize.minBoxes}</span>
-                                    <img src={ASSETS.caja} alt="Caja" className="h-4 sm:h-5 object-contain" />
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Botón y Flecha */}
-                <div className="flex items-center justify-center gap-3 sm:gap-4 w-full max-w-sm mt-auto mb-2 shrink-0 pop-in" style={{animationDelay: '0.6s'}}>
-                    <Button onClick={onNext} className="!w-auto px-8 sm:px-10 uppercase text-[200%] sm:text-[250%] leading-none tracking-wider !py-2 sm:!py-3 rounded-2xl font-black">
-                        JUGAR
-                    </Button>
+            <div className="h-full w-full overflow-hidden bg-white fade-enter relative">
+                <div className="flex flex-col items-center justify-between h-full w-full px-4 sm:px-6 py-[3dvh]" style={{ paddingBottom: 'max(2dvh, env(safe-area-inset-bottom))', paddingTop: 'max(2dvh, env(safe-area-inset-top))' }}>
                     
-                    {/* Flecha Derecha */}
-                    <div className="text-[#F9137C] animate-bounce-right shrink-0">
-                        <svg width="24" height="40" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="w-5 sm:w-6 h-8 sm:h-10">
-                            <path d="M0 0L24 20L0 40V0Z" />
-                        </svg>
+                    {/* Logo Arboleda Top */}
+                    <div className="w-full flex justify-center pop-in shrink-0 h-[6dvh] max-h-[60px]" style={{animationDelay: '0.1s'}}>
+                        <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-full object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
                     </div>
-                </div>
+                    
+                    {/* Icono e Instrucción */}
+                    <div className="flex flex-col items-center pop-in shrink-0 mt-[1dvh]" style={{animationDelay: '0.2s'}}>
+                        <img src={ASSETS.foco} alt="Foco" className="h-[5dvh] max-h-[45px] mb-[0.5dvh] drop-shadow-md" />
+                        <h2 className="text-[clamp(1.5rem,3.5dvh,2.2rem)] leading-[1.1] font-black text-[#0878A4]">
+                            ¿Cómo ganas?
+                        </h2>
+                    </div>
+                    
+                    {/* Animación del juego - Flexible */}
+                    <div className="w-full max-w-[30dvh] aspect-square bg-[#f1f5f9] rounded-[2dvh] relative overflow-hidden shadow-inner shrink min-h-0 pop-in my-[1.5dvh]" style={{animationDelay: '0.3s'}}>
+                        <MiniGamePreview />
+                    </div>
+                    
+                    {/* Textos */}
+                    <div className="w-full max-w-sm flex flex-col items-center gap-[0.5dvh] pop-in shrink-0" style={{animationDelay: '0.4s'}}>
+                        <p className="text-[#F9137C] text-[clamp(0.7rem,1.8dvh,1rem)] font-medium leading-tight px-4 text-center">
+                            Mueve el camión de mudanza y<br/>atrapa todas las cajas que puedas<br/>en <strong className="font-black">30 segundos.</strong>
+                        </p>
+                        <p className="text-[#0878A4] text-[clamp(0.7rem,1.8dvh,1rem)] font-medium leading-tight mt-[0.5dvh] text-center">
+                            ¡Tienes <strong className="font-black">5 intentos</strong> para lograr tu mejor puntaje!
+                        </p>
+                    </div>
 
-                {/* Logo Clasem Bottom */}
-                <div className="w-full flex justify-center pt-1 pop-in shrink-0" style={{animationDelay: '0.7s'}}>
-                    <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-6 sm:h-8 object-contain" />
+                    {/* Premios Horizontales */}
+                    <div className="flex justify-center items-end gap-[2dvh] w-full shrink-0 pop-in my-[1.5dvh]" style={{animationDelay: '0.5s'}}>
+                        {ASSETS.prizes.map((prize, idx) => {
+                            const relativeHeights = ['h-[5dvh]', 'h-[8dvh]', 'h-[11dvh]'];
+                            return (
+                                <div key={prize.id} className="flex flex-col items-center">
+                                    <img 
+                                        src={prize.image} 
+                                        className={`${relativeHeights[idx]} object-contain mb-[0.5dvh] drop-shadow-md`} 
+                                        alt={prize.name} 
+                                    />
+                                    <div className="flex items-center gap-[0.5dvh]">
+                                        <span className="text-[#F9137C] font-black text-[clamp(1rem,2.5dvh,1.5rem)] leading-none">{prize.minBoxes}</span>
+                                        <img src={ASSETS.caja} alt="Caja" className="h-[2.5dvh] object-contain" />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Botón y Flecha */}
+                    <div className="flex items-center justify-center gap-[1.5dvh] w-full max-w-sm shrink-0 pop-in" style={{animationDelay: '0.6s'}}>
+                        <Button onClick={onNext} className="!w-auto px-[4dvh] uppercase text-[clamp(1.5rem,4dvh,2.5rem)] leading-none tracking-wider !py-[1.5dvh] rounded-[2dvh] font-black">
+                            JUGAR
+                        </Button>
+                        
+                        {/* Flecha Derecha */}
+                        <div className="text-[#F9137C] animate-bounce-right shrink-0 h-[4dvh] max-h-[35px]">
+                            <svg viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="h-full w-auto">
+                                <path d="M0 0L24 20L0 40V0Z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    {/* Logo Clasem Bottom */}
+                    <div className="w-full flex justify-center pop-in shrink-0 mt-[1.5dvh] h-[3.5dvh] max-h-[35px]" style={{animationDelay: '0.7s'}}>
+                        <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-full object-contain" />
+                    </div>
                 </div>
             </div>
         );
@@ -960,10 +928,10 @@
                     <div className="w-48 h-32 mb-4 bounce-in">
                         <TruckPreview />
                     </div>
-                    <h2 className="text-4xl sm:text-5xl font-black text-white mb-2 uppercase text-center leading-[0.9] pop-in" style={{animationDelay: '0.1s'}}>
+                    <h2 className="text-[clamp(2rem,6dvh,4rem)] font-black text-white mb-2 uppercase text-center leading-[0.9] pop-in" style={{animationDelay: '0.1s'}}>
                         Intento<br/>{attemptCount} de {MAX_ATTEMPTS}
                     </h2>
-                    <p className="text-pink-200 font-bold text-xl sm:text-2xl animate-pulse mt-4 pop-in" style={{animationDelay: '0.3s'}}>
+                    <p className="text-pink-200 font-bold text-[clamp(1.2rem,3dvh,2rem)] animate-pulse mt-4 pop-in" style={{animationDelay: '0.3s'}}>
                         ¡PREPÁRATE!
                     </p>
                 </div>
@@ -971,17 +939,15 @@
         };
 
         const getPrizeForScore = (score) => {
-            // Evaluamos desde el más alto (Tier 3) al más bajo
             for (let i = ASSETS.prizes.length - 1; i >= 0; i--) {
                 if (score >= ASSETS.prizes[i].minBoxes) {
                     return ASSETS.prizes[i];
                 }
             }
-            return null; // Ningún premio
+            return null;
         };
 
         const ResultView = ({ score, attemptCount, attemptsArr, onRetry, onClaim }) => {
-            // Calculamos el mejor récord histórico ANTERIOR al intento actual
             const previousAttempts = attemptsArr.slice(0, -1);
             const previousBestScore = previousAttempts.length > 0 ? Math.max(...previousAttempts) : 0;
             const previousBestPrize = getPrizeForScore(previousBestScore);
@@ -989,7 +955,6 @@
             const currentPrize = getPrizeForScore(score);
             const attemptsLeft = MAX_ATTEMPTS - attemptCount;
 
-            // Determina si estamos manteniendo un premio mejor/igual o ganando uno nuevo
             const isMaintaining = previousBestPrize !== null && (!currentPrize || previousBestPrize.minBoxes >= currentPrize.minBoxes);
             const displayPrize = isMaintaining ? previousBestPrize : currentPrize;
             
@@ -999,43 +964,39 @@
             };
 
             return (
-                <div className="flex flex-col h-full px-4 sm:px-6 fade-enter text-center items-center justify-between bg-white relative overflow-y-auto" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
-                    
-                    {/* Logo Arboleda Top */}
-                    <div className="w-full flex justify-center pop-in shrink-0" style={{animationDelay: '0.1s'}}>
-                        <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-12 sm:h-16 object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
-                    </div>
-
-                    <div className="flex flex-col items-center justify-center w-full flex-1 shrink-0 my-4">
+                <div className="h-full w-full overflow-hidden bg-white fade-enter relative">
+                    <div className="flex flex-col items-center justify-between h-full w-full px-4 sm:px-6 py-[3dvh]" style={{ paddingBottom: 'max(2dvh, env(safe-area-inset-bottom))', paddingTop: 'max(2dvh, env(safe-area-inset-top))' }}>
                         
+                        {/* Logo Arboleda Top */}
+                        <div className="w-full flex justify-center pop-in shrink-0 h-[6dvh] max-h-[60px]" style={{animationDelay: '0.1s'}}>
+                            <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-full object-contain drop-shadow-sm" style={{ filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)' }} />
+                        </div>
+
                         {/* Atrapaste Title */}
-                        <div className="pop-in" style={{animationDelay:'0.2s'}}>
-                            <h2 className="text-[1.75rem] sm:text-[2rem] font-black text-[#F9137C] leading-none mb-1">
+                        <div className="flex flex-col items-center justify-center pop-in shrink-0 mt-[1.5dvh]" style={{animationDelay:'0.2s'}}>
+                            <h2 className="text-[clamp(1.5rem,3.5dvh,2rem)] font-black text-[#F9137C] leading-none mb-[0.5dvh]">
                                 Atrapaste
                             </h2>
-                            <div className="flex items-center justify-center gap-2">
-                                <img src={ASSETS.caja} alt="Caja" className="h-8 sm:h-10 object-contain" />
-                                <span className="text-4xl sm:text-5xl font-black text-[#F9137C]">{score < 10 ? `0${score}` : score}</span>
+                            <div className="flex items-center justify-center gap-[1dvh]">
+                                <img src={ASSETS.caja} alt="Caja" className="h-[4.5dvh] object-contain" />
+                                <span className="text-[clamp(2.5rem,6dvh,4rem)] font-black text-[#F9137C] leading-none">{score < 10 ? `0${score}` : score}</span>
                             </div>
                         </div>
                         
                         {/* Prize Image & Background Wheel */}
-                        <div className="relative w-full flex justify-center items-center my-4 min-h-[180px] sm:min-h-[220px] max-h-[280px]">
-                            {/* Rueda giratoria con tinte magenta y opacity suave */}
-                            <img src={ASSETS.rueda} className="absolute w-[110%] max-w-[320px] sm:max-w-[400px] spin-slow z-0 pop-in opacity-20" style={{animationDelay: '0.3s', filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)'}} alt="Fondo Animado" />
-                            
-                            {/* Prize Image o Caja triste si no ganó nada */}
+                        <div className="relative w-full flex-1 flex justify-center items-center shrink min-h-0 my-[1dvh]">
+                            <img src={ASSETS.rueda} className="absolute h-[130%] max-h-[45dvh] spin-slow z-0 pop-in opacity-20 object-contain" style={{animationDelay: '0.3s', filter: 'brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(3015%) hue-rotate(318deg) brightness(101%) contrast(97%)'}} alt="Fondo Animado" />
                             {displayPrize ? (
-                                <img src={displayPrize.image} className="relative h-[140px] sm:h-[180px] object-contain drop-shadow-2xl pop-in z-10 bounce-in" style={{animationDelay: '0.4s'}} alt="Premio" />
+                                <img src={displayPrize.image} className="relative h-full max-h-[25dvh] object-contain drop-shadow-2xl pop-in z-10 bounce-in" style={{animationDelay: '0.4s'}} alt="Premio" />
                             ) : (
-                                <div className="relative z-10 text-6xl bounce-in" style={{animationDelay: '0.4s'}}>📦</div>
+                                <div className="relative z-10 text-[clamp(4rem,12dvh,7rem)] bounce-in leading-none" style={{animationDelay: '0.4s'}}>📦</div>
                             )}
                         </div>
 
                         {/* Title Ganaste / Mantienes */}
-                        <div className="pop-in mb-2" style={{animationDelay:'0.5s'}}>
+                        <div className="pop-in shrink-0 mb-[2dvh]" style={{animationDelay:'0.5s'}}>
                             {displayPrize ? (
-                                <h3 className="text-[1.5rem] sm:text-[1.7rem] md:text-3xl font-black text-[#0878A4] leading-[1.1] uppercase px-2">
+                                <h3 className="text-[clamp(1.3rem,3dvh,2.5rem)] font-black text-[#0878A4] leading-[1.1] uppercase px-2 text-center">
                                     {isMaintaining ? (
                                         <>¡MANTIENES TU<br/>{displayPrize.name}!</>
                                     ) : (
@@ -1043,62 +1004,62 @@
                                     )}
                                 </h3>
                             ) : (
-                                <h3 className="text-[1.5rem] sm:text-[1.7rem] md:text-3xl font-black text-[#0878A4] leading-[1.1] uppercase px-2">
+                                <h3 className="text-[clamp(1.3rem,3dvh,2.5rem)] font-black text-[#0878A4] leading-[1.1] uppercase px-2 text-center">
                                     ¡SIGUE<br/>INTENTANDO!
                                 </h3>
                             )}
                         </div>
-                    </div>
 
-                    {/* Botones */}
-                    <div className="w-full flex flex-col gap-3 sm:gap-4 mt-auto shrink-0 pop-in" style={{animationDelay:'0.6s'}}>
-                        {attemptsLeft > 0 ? (
-                            <>
-                                {/* Jugar (Izquierda) */}
-                                <div className="flex items-center justify-center gap-2 sm:gap-3 w-full max-w-[340px] mx-auto">
-                                    <div className="text-[#0878A4] animate-bounce-left shrink-0">
-                                        <svg width="20" height="32" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="w-4 sm:w-5 h-6 sm:h-8">
-                                            <path d="M24 0L0 20L24 40V0Z" />
-                                        </svg>
-                                    </div>
-                                    <Button onClick={onRetry} className="!w-full !bg-[#0878A4] hover:!bg-[#065b7c] flex-1 px-2 uppercase text-lg sm:text-2xl leading-none tracking-wider !py-3 sm:!py-4 rounded-2xl font-black shadow-lg">
-                                        JUGAR ({attemptsLeft} INTENTOS)
-                                    </Button>
-                                    <div className="w-[16px] sm:w-[20px] shrink-0"></div> {/* Spacer balance */}
-                                </div>
-                                
-                                {/* Reclamar (Derecha) */}
-                                {displayPrize && (
-                                    <div className="flex items-center justify-center gap-2 sm:gap-3 w-full max-w-[340px] mx-auto">
-                                        <div className="w-[16px] sm:w-[20px] shrink-0"></div> {/* Spacer balance */}
-                                        <Button onClick={onClaim} className="!w-full flex-1 px-2 uppercase text-lg sm:text-2xl leading-none tracking-wider !py-3 sm:!py-4 rounded-2xl font-black shadow-lg">
-                                            RECLAMAR MI PREMIO
-                                        </Button>
-                                        <div className="text-[#F9137C] animate-bounce-right shrink-0">
-                                            <svg width="20" height="32" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="w-4 sm:w-5 h-6 sm:h-8">
-                                                <path d="M0 0L24 20L0 40V0Z" />
+                        {/* Botones */}
+                        <div className="w-full flex flex-col gap-[1.5dvh] shrink-0 pop-in" style={{animationDelay:'0.6s'}}>
+                            {attemptsLeft > 0 ? (
+                                <>
+                                    {/* Jugar (Izquierda) */}
+                                    <div className="flex items-center justify-center gap-[1.5dvh] w-full max-w-[340px] mx-auto h-[7.5dvh] min-h-[50px]">
+                                        <div className="text-[#0878A4] animate-bounce-left shrink-0 h-[4dvh] max-h-[30px]">
+                                            <svg viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="h-full w-auto">
+                                                <path d="M24 0L0 20L24 40V0Z" />
                                             </svg>
                                         </div>
+                                        <Button onClick={onRetry} className="!w-full h-full !bg-[#0878A4] hover:!bg-[#065b7c] flex-1 px-2 uppercase text-[clamp(1rem,2.5dvh,1.5rem)] leading-none tracking-wider rounded-[1.5dvh] font-black shadow-lg">
+                                            JUGAR ({attemptsLeft} INTENTOS)
+                                        </Button>
+                                        <div className="w-[16px] sm:w-[20px] shrink-0"></div> {/* Spacer balance */}
                                     </div>
-                                )}
-                            </>
-                        ) : (
-                            <div className="flex items-center justify-center gap-2 sm:gap-3 w-full max-w-[340px] mx-auto">
-                                <Button onClick={onClaim} className="!w-full px-8 sm:px-10 uppercase text-2xl sm:text-3xl leading-none tracking-wider !py-3 sm:!py-4 rounded-2xl font-black">
-                                    CONTINUAR
-                                </Button>
-                                <div className="text-[#F9137C] animate-bounce-right shrink-0">
-                                    <svg width="20" height="32" viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="w-4 sm:w-5 h-6 sm:h-8">
-                                        <path d="M0 0L24 20L0 40V0Z" />
-                                    </svg>
+                                    
+                                    {/* Reclamar (Derecha) */}
+                                    {displayPrize && (
+                                        <div className="flex items-center justify-center gap-[1.5dvh] w-full max-w-[340px] mx-auto h-[7.5dvh] min-h-[50px]">
+                                            <div className="w-[16px] sm:w-[20px] shrink-0"></div> {/* Spacer balance */}
+                                            <Button onClick={onClaim} className="!w-full h-full flex-1 px-2 uppercase text-[clamp(1rem,2.5dvh,1.5rem)] leading-none tracking-wider rounded-[1.5dvh] font-black shadow-lg">
+                                                RECLAMAR MI PREMIO
+                                            </Button>
+                                            <div className="text-[#F9137C] animate-bounce-right shrink-0 h-[4dvh] max-h-[30px]">
+                                                <svg viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="h-full w-auto">
+                                                    <path d="M0 0L24 20L0 40V0Z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-center gap-[1.5dvh] w-full max-w-[340px] mx-auto h-[8dvh] min-h-[55px]">
+                                    <Button onClick={onClaim} className="!w-full h-full px-8 uppercase text-[clamp(1.5rem,3.5dvh,2.5rem)] leading-none tracking-wider rounded-[2dvh] font-black">
+                                        CONTINUAR
+                                    </Button>
+                                    <div className="text-[#F9137C] animate-bounce-right shrink-0 h-[4dvh] max-h-[35px]">
+                                        <svg viewBox="0 0 24 40" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="h-full w-auto">
+                                            <path d="M0 0L24 20L0 40V0Z" />
+                                        </svg>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div>
 
-                    {/* Logo Clasem Bottom */}
-                    <div className="w-full flex justify-center pt-4 pop-in shrink-0" style={{animationDelay: '0.7s'}}>
-                        <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-6 sm:h-8 object-contain" />
+                        {/* Logo Clasem Bottom */}
+                        <div className="w-full flex justify-center pop-in shrink-0 mt-[2dvh] h-[3.5dvh] max-h-[35px]" style={{animationDelay: '0.7s'}}>
+                            <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-full object-contain" />
+                        </div>
                     </div>
                 </div>
             );
@@ -1113,62 +1074,64 @@
             };
 
             return (
-                <div className="flex flex-col items-center justify-between h-full px-4 sm:px-6 fade-enter text-center bg-[#F9137C] relative overflow-y-auto" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))', paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
-                    
-                    {/* Logo Arboleda Top (Blanco) */}
-                    <div className="w-full flex justify-center pop-in shrink-0" style={{animationDelay: '0.1s'}}>
-                        <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-12 sm:h-16 object-contain drop-shadow-sm" style={{ filter: 'brightness(0) invert(1)' }} />
-                    </div>
-                    
-                    {finalPrize ? (
-                        <>
-                            {/* Textos Principales */}
-                            <div className="mt-2 sm:mt-4 pop-in shrink-0" style={{animationDelay: '0.2s'}}>
-                                <h1 className="text-[2.2rem] sm:text-[2.6rem] font-black text-white leading-none uppercase tracking-tight">
-                                    ¡FELICIDADES!
-                                </h1>
-                                <h2 className="text-[1.1rem] sm:text-[1.3rem] font-bold text-white mt-1 uppercase leading-tight">
-                                    Te llevas {getArticle(finalPrize.name)}<br/>{finalPrize.name}
-                                </h2>
-                            </div>
-                            
-                            {/* Prize Image & Rueda Blanca */}
-                            <div className="relative w-full flex-1 flex justify-center items-center min-h-[140px] sm:min-h-[160px] max-h-[220px] my-2">
-                                <img src={ASSETS.rueda2} className="absolute w-[120%] max-w-[320px] sm:max-w-[400px] spin-slow z-0 pop-in opacity-90" style={{animationDelay: '0.3s'}} alt="Destello Blanco" />
-                                <img src={finalPrize.image} className="relative h-[110px] sm:h-[160px] object-contain drop-shadow-2xl pop-in z-10 bounce-in" style={{animationDelay: '0.4s'}} alt="Premio Ganado" />
-                            </div>
-
-                            {/* Cámara e Instrucciones */}
-                            <div className="flex flex-col items-center pop-in shrink-0 z-20" style={{animationDelay: '0.5s'}}>
-                                <img src={ASSETS.camara} alt="Cámara" className="h-8 sm:h-9 mb-1 sm:mb-2 drop-shadow-md" />
-                                <p className="text-white text-[12px] sm:text-sm font-bold leading-tight px-4 sm:px-6 max-w-xs">
-                                    Tómale una captura a esta pantalla y preséntasela a tu asesor al separar tu depa.
-                                </p>
-                            </div>
-                            
-                            {/* Bloque Código de Ganador */}
-                            <div className="w-full flex flex-col items-center mt-2 sm:mt-3 mb-2 pop-in shrink-0 z-20" style={{animationDelay: '0.6s'}}>
-                                <p className="text-white text-base sm:text-lg font-medium mb-1">
-                                    Código de ganador:
-                                </p>
-                                <div className="bg-white rounded-[1.5rem] p-3 sm:p-4 w-[95%] max-w-[320px] shadow-2xl flex flex-col items-center justify-center">
-                                    <h2 className="text-[2rem] sm:text-4xl font-black text-[#1e293b] leading-none mb-1 tracking-widest">{uniqueCode}</h2>
-                                    <p className="text-[#1e293b] font-semibold text-xs sm:text-base leading-tight mt-1">{userData.name}</p>
-                                    <p className="text-[#1e293b] font-semibold text-xs sm:text-base leading-tight">DNI/CE: {userData.dni}</p>
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center">
-                            <div className="text-6xl mb-6 opacity-80 pop-in">😢</div>
-                            <h2 className="text-3xl font-extrabold mb-4 text-white pop-in" style={{animationDelay: '0.2s'}}>¡Gracias por jugar!</h2>
-                            <p className="text-pink-100 px-4 pop-in" style={{animationDelay: '0.3s'}}>Esta vez no lograste alcanzar el puntaje mínimo, pero tenemos grandes descuentos esperándote en caseta de ventas.</p>
+                <div className="h-full w-full overflow-hidden bg-[#F9137C] fade-enter relative">
+                    <div className="flex flex-col items-center justify-between h-full w-full px-4 sm:px-6 py-[3dvh]" style={{ paddingBottom: 'max(2dvh, env(safe-area-inset-bottom))', paddingTop: 'max(2dvh, env(safe-area-inset-top))' }}>
+                        
+                        {/* Logo Arboleda Top (Blanco) */}
+                        <div className="w-full flex justify-center pop-in shrink-0 h-[6dvh] max-h-[60px]" style={{animationDelay: '0.1s'}}>
+                            <img src={ASSETS.logoArboleda} alt="La Arboleda" className="h-full object-contain drop-shadow-sm" style={{ filter: 'brightness(0) invert(1)' }} />
                         </div>
-                    )}
+                        
+                        {finalPrize ? (
+                            <>
+                                {/* Textos Principales */}
+                                <div className="pop-in shrink-0 text-center mt-[2dvh]" style={{animationDelay: '0.2s'}}>
+                                    <h1 className="text-[clamp(2rem,4.5dvh,3rem)] font-black text-white leading-none uppercase tracking-tight">
+                                        ¡FELICIDADES!
+                                    </h1>
+                                    <h2 className="text-[clamp(1rem,2.2dvh,1.5rem)] font-bold text-white mt-[0.5dvh] uppercase leading-tight">
+                                        Te llevas {getArticle(finalPrize.name)}<br/>{finalPrize.name}
+                                    </h2>
+                                </div>
+                                
+                                {/* Prize Image & Rueda Blanca */}
+                                <div className="relative w-full flex-1 flex justify-center items-center min-h-0 shrink my-[1.5dvh]">
+                                    <img src={ASSETS.rueda2} className="absolute h-[140%] max-h-[38dvh] spin-slow z-0 pop-in opacity-90 object-contain" style={{animationDelay: '0.3s'}} alt="Destello Blanco" />
+                                    <img src={finalPrize.image} className="relative h-full max-h-[22dvh] object-contain drop-shadow-2xl pop-in z-10 bounce-in" style={{animationDelay: '0.4s'}} alt="Premio Ganado" />
+                                </div>
 
-                    {/* Logo Clasem Bottom (Blanco) */}
-                    <div className="w-full flex justify-center pt-2 pop-in shrink-0" style={{animationDelay: '0.7s'}}>
-                        <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-6 sm:h-8 object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+                                {/* Cámara e Instrucciones */}
+                                <div className="flex flex-col items-center pop-in shrink-0 z-20" style={{animationDelay: '0.5s'}}>
+                                    <img src={ASSETS.camara} alt="Cámara" className="h-[4.5dvh] max-h-[40px] mb-[1dvh] drop-shadow-md" />
+                                    <p className="text-white text-[clamp(0.7rem,1.8dvh,1rem)] font-bold leading-tight px-4 sm:px-6 max-w-xs text-center">
+                                        Tómale una captura a esta pantalla y preséntasela a tu asesor al separar tu depa.
+                                    </p>
+                                </div>
+                                
+                                {/* Bloque Código de Ganador */}
+                                <div className="w-full flex flex-col items-center pop-in shrink-0 z-20 mt-[1.5dvh]" style={{animationDelay: '0.6s'}}>
+                                    <p className="text-white text-[clamp(0.9rem,2.2dvh,1.2rem)] font-medium mb-[0.5dvh]">
+                                        Código de ganador:
+                                    </p>
+                                    <div className="bg-white rounded-[2dvh] p-[2dvh] w-[95%] max-w-[320px] shadow-2xl flex flex-col items-center justify-center">
+                                        <h2 className="text-[clamp(1.8rem,4.5dvh,2.5rem)] font-black text-[#1e293b] leading-none mb-[0.5dvh] tracking-widest">{uniqueCode}</h2>
+                                        <p className="text-[#1e293b] font-semibold text-[clamp(0.75rem,1.8dvh,1rem)] leading-tight mt-[0.5dvh]">{userData.name}</p>
+                                        <p className="text-[#1e293b] font-semibold text-[clamp(0.75rem,1.8dvh,1rem)] leading-tight">DNI/CE: {userData.dni}</p>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex-1 flex flex-col items-center justify-center shrink min-h-0">
+                                <div className="text-[clamp(3rem,8dvh,5rem)] mb-[2dvh] opacity-80 pop-in leading-none">😢</div>
+                                <h2 className="text-[clamp(1.5rem,4dvh,2.5rem)] font-extrabold mb-[1dvh] text-white pop-in" style={{animationDelay: '0.2s'}}>¡Gracias por jugar!</h2>
+                                <p className="text-pink-100 px-4 pop-in text-[clamp(0.8rem,2dvh,1.1rem)]" style={{animationDelay: '0.3s'}}>Esta vez no lograste alcanzar el puntaje mínimo, pero tenemos grandes descuentos esperándote en caseta de ventas.</p>
+                            </div>
+                        )}
+
+                        {/* Logo Clasem Bottom (Blanco) */}
+                        <div className="w-full flex justify-center pop-in shrink-0 mt-[2dvh] h-[3.5dvh] max-h-[35px]" style={{animationDelay: '0.7s'}}>
+                            <img src={ASSETS.logoClasem} alt="Clasem EOM" className="h-full object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+                        </div>
                     </div>
                 </div>
             );
